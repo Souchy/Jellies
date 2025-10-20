@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3 uid="uid://b835nmiqgltox"]
+
+[ext_resource type="Script" uid="uid://cd7jgc7njmecc" path="res://game/board_node/BoardNode.cs" id="1_ugjtr"]
+[ext_resource type="Texture2D" uid="uid://ch1drxm34ufuu" path="res://assets/terrain/background_01.png" id="2_whm7l"]
+
+[sub_resource type="TileSet" id="TileSet_o3skn"]
+
+[node name="BoardNode" type="Node2D"]
+script = ExtResource("1_ugjtr")
+
+[node name="TileMapLayer" type="TileMapLayer" parent="."]
+tile_set = SubResource("TileSet_o3skn")
+
+[node name="Background01" type="Sprite2D" parent="."]
+scale = Vector2(0.255, 0.255)
+texture = ExtResource("2_whm7l")
+
+[node name="Camera2D" type="Camera2D" parent="."]

@@ -1,0 +1,87 @@
+# This workflow will build a .NET project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
+
+name: .NET
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  # setup:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v4
+  #   - name: Setup .NET
+  #     uses: actions/setup-dotnet@v4
+  #     with:
+  #       dotnet-version: 8.0.x
+  #   - name: Restore dependencies
+  #     run: dotnet restore projects/Game/Cosmoem.sln
+  #   - name: Build
+  #     run: dotnet build projects/Game/Cosmoem.sln --no-restore
+
+  # unit_test:    
+  #   runs-on: ubuntu-latest
+  #   name: 🧪 Run Tests 
+  #   # needs: build
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Setup .NET
+  #       uses: actions/setup-dotnet@v4
+  #       with:
+  #         dotnet-version: 8.0.x
+  #     - name: Restore dependencies
+  #       run: dotnet restore projects/Game/Cosmoem.sln
+  #     - name: Build
+  #       run: dotnet build projects/Game/Cosmoem.sln --no-restore
+  #     - name: Test
+  #       run: dotnet test projects/Game/Cosmoem.sln --no-build --verbosity normal
+
+  benchmark_integration_test:    
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.304
+          dotnet-quality: 'preview'
+
+      - name: Restore dependencies
+        run: dotnet restore Jellies.sln
+
+      - name: 🤖 Setup Godot
+        uses: chickensoft-games/setup-godot@v2
+        with:
+          # Version must include major, minor, and patch, and be >= 4.0.0
+          # Pre-release label is optional.
+          #
+          # In this case, we are using the version from global.json.
+          #
+          # This allows checks on renovatebot PR's to succeed whenever
+          # renovatebot updates the Godot SDK version.
+          version: 4.5.1-stable
+          use-dotnet: true
+          # include-templates: true
+
+      - name: 🔬 Verify Setup
+        run: |
+          dotnet --version
+          godot --version
+
+      - name: Build
+        run: dotnet build Jellies.sln --no-restore
+
+      # - name: Test
+      #   timeout-minutes: 2
+      #   # working-directory: projects/Game
+      #   # run: game/test/GameTest.tscn --run-tests --quit-on-finish -- --test
+      #   run: godot projects/Game/game/test/GameTest.tscn --headless --run-tests -- --test
+
+      # - name: Ai run
+      #   timeout-minutes: 2
+      #   # working-directory: projects/Game
+      #   # run: game/test/GameTest.tscn --run-tests --quit-on-finish -- --test
+      #   run: godot projects/Game/game/test/GameTest.tscn --headless -- --ai

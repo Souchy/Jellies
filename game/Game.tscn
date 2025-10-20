@@ -1,0 +1,85 @@
+[gd_scene load_steps=6 format=3 uid="uid://c7axp23l3boye"]
+
+[ext_resource type="Texture2D" uid="uid://bw0luhencdvqm" path="res://icon.svg" id="1_klkup"]
+[ext_resource type="Script" uid="uid://ppo1ti0iqdj2" path="res://game/Game.cs" id="1_m44fu"]
+[ext_resource type="PackedScene" uid="uid://b835nmiqgltox" path="res://game/board_node/BoardNode.tscn" id="4_i75et"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_m71xk"]
+size = Vector2(64, 64)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m71xk"]
+bg_color = Color(0.034364212, 0.5100603, 0.6, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.07188173, 0.6557274, 0.8, 1)
+
+[node name="Game" type="PanelContainer"]
+process_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_m44fu")
+
+[node name="Area2D" type="Area2D" parent="."]
+position = Vector2(32, 32)
+monitoring = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+shape = SubResource("RectangleShape2D_m71xk")
+
+[node name="CancelZone" type="Sprite2D" parent="Area2D"]
+modulate = Color(1, 0.06949222, 0.10680479, 1)
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("1_klkup")
+
+[node name="Label" type="Label" parent="Area2D"]
+offset_left = -28.0
+offset_top = -12.0
+offset_right = 33.0
+offset_bottom = 11.0
+text = "CANCEL"
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 256
+theme_override_constants/margin_right = 256
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="PanelContainer2" type="PanelContainer" parent="HBoxContainer"]
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/PanelContainer2"]
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="BtnPlay" type="Button" parent="HBoxContainer/PanelContainer2/VBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Play"
+
+[node name="PanelContainer" type="PanelContainer" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_m71xk")
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="HBoxContainer/PanelContainer"]
+layout_mode = 2
+stretch = true
+mouse_target = true
+
+[node name="SubViewport" type="SubViewport" parent="HBoxContainer/PanelContainer/SubViewportContainer"]
+handle_input_locally = false
+size = Vector2i(944, 644)
+render_target_update_mode = 4
+
+[node name="BoardNode" parent="HBoxContainer/PanelContainer/SubViewportContainer/SubViewport" instance=ExtResource("4_i75et")]
+unique_name_in_owner = true
