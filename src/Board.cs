@@ -26,9 +26,10 @@ public class Board
         foreach (var (i, j, currentPill) in pills)
         {
             // Check patterns in order of importance
-            bool hasLine = PatternChecker.CheckLine(this, new(), out var lineMatches);
+            bool hasLine = PatternChecker.CheckLines(this, new(), out var lineMatches);
             bool hasSquare = PatternChecker.CheckSquare(this, new(), out var squareMatches);
-            if(hasSquare && squareMatches.Count > lineMatches.Count)
+            // Square > line3 but Square < line4 etc
+            if (hasSquare && squareMatches.Count > lineMatches.Count)
             {
                 foreach (var pos in squareMatches)
                 {
@@ -45,10 +46,9 @@ public class Board
             }
         }
 
-
         foreach (var (i, j, currentPill) in pills)
         {
-
+            
         }
 
     }
@@ -88,34 +88,55 @@ public static class PatternChecker
         }
         return false;
     }
-    public static bool CheckLine(Board board, Vector2I position, out List<Vector2I> matchedPositions)
+    public static bool CheckLines(Board board, Vector2I position, out List<Vector2I> matchedPositions)
     {
         matchedPositions = [];
-
         Pill currentPill = board.pills[position];
-        Dictionary<bool, HashSet<Vector2I>> directions = Enum.GetValues<Direction>().ToDictionary(d => d.IsHorizontal(), d => new HashSet<Vector2I>());
+
+        Span<Vector2I> horizontal = stackalloc Vector2I[Board.MaxWidth];
+        Span<Vector2I> vertical = stackalloc Vector2I[Board.MaxWidth];
+        int horizontalCount = 0;
+        int verticalCount = 0;
 
         // for each direction, put pills in vertical or horizontal lists
         foreach (var dir in Enum.GetValues<Direction>())
         {
+            var dirVec = DirectionExtensions.ToVector2I(dir);
             for (int i = 0; i < Board.MaxWidth; i++)
             {
-                var pos = position + DirectionExtensions.ToVector2I(dir) * i;
+                var pos = position + dirVec * i;
                 if (!board.pills.Is(pos, currentPill))
                     break;
-                directions[dir.IsHorizontal()].Add(pos);
+                if (dir.IsHorizontal())
+                {
+                    horizontal[horizontalCount] = pos;
+                    horizontalCount++;
+                }
+                else
+                {
+                    vertical[verticalCount] = pos;
+                    verticalCount++;
+                }
             }
         }
         bool foundMatch = false;
-        foreach (var dir in directions)
+        if (horizontalCount >= 3)
         {
-            // For each direction, trigger pills if we have 3 or more in a line (including the original position)
-            if (dir.Value.Count >= 3)
+            for(int i = 0; i < horizontalCount; i++)
             {
-                matchedPositions.AddRange(dir.Value);
-                foundMatch = true;
+                matchedPositions.Add(horizontal[i]);
             }
+            foundMatch = true;
         }
+        if (verticalCount >= 3)
+        {
+            for (int i = 0; i < verticalCount; i++)
+            {
+                matchedPositions.Add(vertical[i]);
+            }
+            foundMatch = true;
+        }
+
         return foundMatch;
     }
 }
