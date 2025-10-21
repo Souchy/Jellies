@@ -11,7 +11,7 @@ internal class BoardGenerator
     {
         Board board = new()
         {
-            pills = new(Board.MaxWidth, Board.MaxWidth)
+            pills = new(8, 4)
         };
         // Assign random pills to positions
         foreach (var (i, j, _) in board.pills)

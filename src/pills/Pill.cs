@@ -54,11 +54,9 @@ public class RegularPill(RegularPillColor Color) : Pill
     }
     public override Node2D CreateNode()
     {
-        var sprite = new Sprite2D
-        {
-            Texture = GD.Load<Texture2D>($"res://assets/pills/{Color.ToString().ToLower()}.png"),
-            Scale = 64f / 256f * Vector2.One
-        };
+        var sprite = new Sprite2D();
+        sprite.Texture = GD.Load<Texture2D>($"res://assets/pills/{Color.ToString().ToLower()}.png");
+        sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
 }
@@ -68,11 +66,9 @@ public class DynamitePill : Pill
     private const int BlastRadius = 3;
     public override Node2D CreateNode()
     {
-        var sprite = new Sprite2D
-        {
-            Texture = GD.Load<Texture2D>("res://assets/pills/dynamite_pack.png"),
-            Scale = 64f / 256f * Vector2.One
-        };
+        var sprite = new Sprite2D();
+        sprite.Texture = GD.Load<Texture2D>("res://assets/pills/dynamite_pack.png");
+        sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
     public override void OnClick(Board board, Vector2I position, out List<IPillEvent> events) => OnDestroy(board, position, out events);
@@ -107,11 +103,9 @@ public class BombPill : Pill
     private const int BlastRadius = 1;
     public override Node2D CreateNode()
     {
-        var sprite = new Sprite2D
-        {
-            Texture = GD.Load<Texture2D>("res://assets/pills/bomb.png"),
-            Scale = 64f / 256f * Vector2.One
-        };
+        var sprite = new Sprite2D();
+        sprite.Texture = GD.Load<Texture2D>("res://assets/pills/bomb.png");
+        sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
     public override void OnClick(Board board, Vector2I position, out List<IPillEvent> events) => OnDestroy(board, position, out events);
@@ -136,22 +130,20 @@ public class HorizontalPill : Pill
 {
     public override Node2D CreateNode()
     {
-        var sprite = new Sprite2D
-        {
-            Texture = GD.Load<Texture2D>("res://assets/pills/horizontal.png"),
-            Scale = 64f / 256f * Vector2.One
-        };
+        var sprite = new Sprite2D();
+        sprite.Texture = GD.Load<Texture2D>("res://assets/pills/horizontal.png");
+        sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
     public override void OnClick(Board board, Vector2I position, out List<IPillEvent> events) => OnDestroy(board, position, out events);
     public override void OnDestroy(Board board, Vector2I position, out List<IPillEvent> events)
     {
         events = [];
-        for (int i = -Board.MaxWidth; i < Board.MaxWidth; i++)
+        for (int i = 0; i < board.pills.Width; i++)
         {
             if (i == 0)
                 continue;
-            Vector2I targetPos = new Vector2I(i, 0) + position;
+            Vector2I targetPos = new(i, 0);
             if (board.pills.Has(targetPos))
             {
                 events.Add(new PillDestroyEvent(targetPos));
@@ -164,22 +156,20 @@ public class VerticalPill : Pill
 {
     public override Node2D CreateNode()
     {
-        var sprite = new Sprite2D
-        {
-            Texture = GD.Load<Texture2D>("res://assets/pills/vertical.png"),
-            Scale = 64f / 256f * Vector2.One
-        };
+        var sprite = new Sprite2D();
+        sprite.Texture = GD.Load<Texture2D>("res://assets/pills/vertical.png");
+        sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
     public override void OnClick(Board board, Vector2I position, out List<IPillEvent> events) => OnDestroy(board, position, out events);
     public override void OnDestroy(Board board, Vector2I position, out List<IPillEvent> events)
     {
         events = [];
-        for (int j = -Board.MaxWidth; j < Board.MaxWidth; j++)
+        for (int j = 0; j < board.pills.Height; j++)
         {
             if (j == 0)
                 continue;
-            Vector2I targetPos = new Vector2I(0, j) + position;
+            Vector2I targetPos = new(0, j);
             if (board.pills.Has(targetPos))
             {
                 events.Add(new PillDestroyEvent(targetPos));

@@ -27,3 +27,8 @@ folder_colors={
 "res://home/": "blue",
 "res://src/": "purple"
 }
+
+[layer_names]
+
+2d_physics/layer_1="Pill"
+2d_physics/layer_2="Terrain"

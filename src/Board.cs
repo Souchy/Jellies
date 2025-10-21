@@ -10,10 +10,15 @@ namespace Jellies.src;
 
 public class Board
 {
-    public const int MaxWidth = 64;
+    public const int MaxWidth = 10;
 
     public TableArray<int> terrain;
     public TableArray<Pill> pills;
+
+    public void InputSwap(Vector2I pos1, Vector2I pos2)
+    {
+        (pills[pos2], pills[pos1]) = (pills[pos1], pills[pos2]);
+    }
 
     public void CheckMatches()
     {
@@ -93,8 +98,8 @@ public static class PatternChecker
         matchedPositions = [];
         Pill currentPill = board.pills[position];
 
-        Span<Vector2I> horizontal = stackalloc Vector2I[Board.MaxWidth];
-        Span<Vector2I> vertical = stackalloc Vector2I[Board.MaxWidth];
+        Span<Vector2I> horizontal = stackalloc Vector2I[board.pills.Width];
+        Span<Vector2I> vertical = stackalloc Vector2I[board.pills.Height];
         int horizontalCount = 0;
         int verticalCount = 0;
 
@@ -102,7 +107,8 @@ public static class PatternChecker
         foreach (var dir in Enum.GetValues<Direction>())
         {
             var dirVec = DirectionExtensions.ToVector2I(dir);
-            for (int i = 0; i < Board.MaxWidth; i++)
+            int max = dir.IsHorizontal() ? board.pills.Width : board.pills.Height;
+            for (int i = 0; i < max; i++)
             {
                 var pos = position + dirVec * i;
                 if (!board.pills.Is(pos, currentPill))

@@ -74,10 +74,11 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_m71xk")
 [node name="SubViewportContainer" type="SubViewportContainer" parent="HBoxContainer/PanelContainer"]
 layout_mode = 2
 stretch = true
-mouse_target = true
 
 [node name="SubViewport" type="SubViewport" parent="HBoxContainer/PanelContainer/SubViewportContainer"]
 handle_input_locally = false
+physics_object_picking = true
+physics_object_picking_first_only = true
 size = Vector2i(944, 644)
 render_target_update_mode = 4
 

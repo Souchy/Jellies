@@ -6,6 +6,8 @@
 size = Vector2(64, 64)
 
 [node name="PillNode" type="Area2D"]
+collision_mask = 3
+monitorable = false
 script = ExtResource("1_3kpmo")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

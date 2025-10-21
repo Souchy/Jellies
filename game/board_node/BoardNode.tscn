@@ -15,4 +15,7 @@ tile_set = SubResource("TileSet_o3skn")
 scale = Vector2(0.255, 0.255)
 texture = ExtResource("2_whm7l")
 
+[node name="Pills" type="Node2D" parent="."]
+unique_name_in_owner = true
+
 [node name="Camera2D" type="Camera2D" parent="."]
