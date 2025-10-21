@@ -5,6 +5,9 @@ using System;
 
 namespace Jellies.game.pill_node;
 
+// TODO: 1 area with multiple shapes ? 
+// dont know if you can get the input event for each shape, 
+//  but then you can do all the click/drag inputs in BoardNode and get the pill from the mouse pos.
 public partial class PillNode : Area2D
 {
     public Board Board { get; set; }
@@ -14,6 +17,7 @@ public partial class PillNode : Area2D
     public bool isDragging;
     private Vector2 _dragStartPosition;
     public event Action<PillNode> OnDrag;
+    // public event Action<PillNode> OnExit;
 
     public override void _Ready()
     {
@@ -58,5 +62,9 @@ public partial class PillNode : Area2D
     {
         return Board.pills[GetGridPosition()];
     }
+
+    // public override void _ExitTree() {
+    //     this.OnExit(this);
+    // }
 
 }

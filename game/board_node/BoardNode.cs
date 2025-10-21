@@ -42,6 +42,9 @@ public partial class BoardNode : Node2D
                 DraggingNode.ZIndex = 10;
             };
             pillnode.ZIndex = 0;
+            // pillnode.OnExit += (node) => {
+            //     this.area.remove(node.shape); // TODO
+            // };
             Pills.AddChild(pillnode);
         }
     }
