@@ -19,3 +19,7 @@ texture = ExtResource("2_whm7l")
 unique_name_in_owner = true
 
 [node name="Camera2D" type="Camera2D" parent="."]
+
+[node name="LblDebug" type="Label" parent="."]
+unique_name_in_owner = true
+text = "aaaaaaa"

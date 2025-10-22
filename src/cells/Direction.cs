@@ -28,10 +28,10 @@ public static class DirectionExtensions
     {
         return dir switch
         {
-            Direction.Up => new Vector2I(0, -1),
-            Direction.Down => new Vector2I(0, 1),
-            Direction.Left => new Vector2I(-1, 0),
-            Direction.Right => new Vector2I(1, 0),
+            Direction.Up => Vector2I.Up,
+            Direction.Down => Vector2I.Down,
+            Direction.Left => Vector2I.Left,
+            Direction.Right => Vector2I.Right,
             _ => throw new ArgumentOutOfRangeException(nameof(dir), dir, null)
         };
     }

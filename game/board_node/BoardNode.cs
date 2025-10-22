@@ -12,6 +12,7 @@ public partial class BoardNode : Node2D
 
     #region Nodes
     [NodePath] public Node2D Pills { get; set; }
+    [NodePath] public Label LblDebug { get; set; }
     //[NodePath] 
     public Area2D Area2D { get; set; }
     #endregion
@@ -97,10 +98,12 @@ public partial class BoardNode : Node2D
             if (mouseClickEvent.Pressed && !IsDragging)
             {
                 var grid2dPos = GetMouseGrid2DPos();
-                var gridPos = new Vector2I((int) grid2dPos.X, (int) grid2dPos.Y) / Constants.PillSize;
+                var gridPos = grid2dPos.ToVector2I() / Constants.PillSize;
                 DraggingNode = PillNodesTable[gridPos];
-                dragStartPosition = DraggingNode.Position;
+                dragStartPosition = grid2dPos; //DraggingNode.Position;
                 Input.SetDefaultCursorShape(Input.CursorShape.Drag);
+                GD.Print($"Start drag {gridPos}");
+                LblDebug.Text = $"Start drag {gridPos}";
             }
         }
     }
@@ -111,29 +114,39 @@ public partial class BoardNode : Node2D
         if (!IsDragging)
             return;
         var lastPos = DraggingNode.Position;
-        var lastBoardPos = lastPos / Constants.PillSize;
+        var lastBoardPos = lastPos.ToVector2I() / Constants.PillSize;
         bool wasSwapped = lastPos != dragStartPosition;
         if (@event is InputEventMouseButton mouseClickEvent && mouseClickEvent.ButtonIndex == MouseButton.Left)
         {
             // On drag release
             if (!mouseClickEvent.Pressed && IsDragging)
             {
-                // TODO: Check if there's a match and dont reset if so.
-                // reset both this node and the swapped node positions
-                DraggingNode.Position = dragStartPosition;
-                DraggingNode = null;
+                // Reset cursor
+                Input.SetDefaultCursorShape(Input.CursorShape.PointingHand);
+                var dragStartBoardPos = dragStartPosition.ToVector2I() / Constants.PillSize;
+                GD.Print($"Stop drag {lastBoardPos} from {dragStartBoardPos}");
+                LblDebug.Text = $"Stop drag {lastBoardPos} from {dragStartBoardPos}";
                 if (wasSwapped)
                 {
-                    PillNodesTable[(int) lastBoardPos.X, (int) lastBoardPos.Y].Position = lastPos;
+                    LblDebug.Text += $"\nWas Swapped";
+                    // Check if there's a match and dont reset if so.
+                    bool matched = Board.InputSwap(dragStartBoardPos, lastBoardPos);
+                    // if no match, reset both this node and the swapped node positions
+                    if (!matched)
+                    {
+                        DraggingNode.Position = dragStartPosition;
+                        PillNodesTable[lastBoardPos].Position = lastPos;
+                    }
+                    LblDebug.Text += $"\nMatched = {matched}";
                 }
-                Input.SetDefaultCursorShape(Input.CursorShape.PointingHand);
+                // Stop dragging
+                DraggingNode = null;
             }
         }
         else
         // On move 
         if (@event is InputEventMouseMotion mouseMotionEvent && IsDragging)
         {
-
             var currPos = GetMouseGrid2DPos();
             var delta = currPos - dragStartPosition;
             delta = delta.Normalized();
@@ -147,21 +160,28 @@ public partial class BoardNode : Node2D
                 delta = Mathf.Sign(delta.Y) * Vector2.Down;
             }
             delta *= Constants.PillSize;
-            var newPos = dragStartPosition + delta;
-            var newBoardPos = newPos / Constants.PillSize;
-            int newX = (int) Mathf.Clamp(newBoardPos.X, 0, Board.pills.Width - 1);
-            int newY = (int) Mathf.Clamp(newBoardPos.Y, 0, Board.pills.Height - 1);
+            Vector2 newPos = dragStartPosition + delta;
+            Vector2I newBoardPos = newPos.ToVector2I() / Constants.PillSize;
+            int newX = Mathf.Clamp(newBoardPos.X, 0, Board.pills.Width - 1);
+            int newY = Mathf.Clamp(newBoardPos.Y, 0, Board.pills.Height - 1);
             newBoardPos = new(newX, newY);
             newPos = newBoardPos * Constants.PillSize;
-
-            // Preview swap
-            DraggingNode.Position = newPos;
-            PillNodesTable[(int) newBoardPos.X, (int) newBoardPos.Y].Position = dragStartPosition;
-            // if we were swapped with another node and we changed position, reset the other node's position
-            if (wasSwapped && lastPos != newPos)
+            if (lastPos != newPos)
             {
-                PillNodesTable[(int) lastBoardPos.X, (int) lastBoardPos.Y].Position = lastPos;
+                GD.Print($"Move drag {newBoardPos} from {lastBoardPos}");
+                LblDebug.Text = $"Move drag {newBoardPos} from {lastBoardPos}";
+                // Preview swap
+                DraggingNode.Position = newPos; // Dragged node goes to new pos
+                PillNodesTable[newBoardPos.X, newBoardPos.Y].Position = dragStartPosition; // New pos goes to center
+                // if we were swapped with another node and we changed position, reset the other node's position
+                if (wasSwapped && lastPos != newPos)
+                {
+                    PillNodesTable[lastBoardPos.X, lastBoardPos.Y].Position = lastPos; // Old pos goes back to old pos
+                    GD.Print($"Move drag swap");
+                    LblDebug.Text += $"\nMove drag swap {lastBoardPos}";
+                }
             }
+
         }
     }
 

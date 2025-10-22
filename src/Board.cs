@@ -31,9 +31,24 @@ public class Board
     public TableArray<int> terrain;
     public TableArray<Pill> pills;
 
-    public void InputSwap(Vector2I pos1, Vector2I pos2)
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="pos1">Start position of the dragged node</param>
+    /// <param name="pos2">End position of the dragged node</param>
+    /// <returns></returns>
+    public bool InputSwap(Vector2I pos1, Vector2I pos2)
     {
+        // Swap temporarily to check matches
         (pills[pos2], pills[pos1]) = (pills[pos1], pills[pos2]);
+        bool matched1 = CheckMatchesOnSwap(out var matchedPatterns1, pos1, pos2);
+        bool matched2 = CheckMatchesOnSwap(out var matchedPatterns2, pos2, pos1);
+        // Reverse the swap if no match
+        if (!(matched1 || matched2))
+        {
+            (pills[pos2], pills[pos1]) = (pills[pos1], pills[pos2]);
+        }
+        return matched1 || matched2;
     }
 
     /// <summary>
@@ -54,7 +69,7 @@ public class Board
             if (hasHorseMove)
                 return false;
             bool hasSnailMove = PatternChecker.CheckAllSnailMoves(this, new(i, j));
-            if(hasSnailMove)
+            if (hasSnailMove)
                 return false;
         }
         return true;
@@ -82,19 +97,12 @@ public class Board
     }
 
 
-    public void CheckMatchesOnCells(params Vector2I[] cellsToCheck)
+    public bool CheckMatchesOnSwap(out List<Pattern> matchedPatterns, Vector2I oldCell, Vector2I newCell) // params Vector2I[] cellsToCheck)
     {
-        TableArray<Pill> pills = this.pills;
-        //List<List<Vector2I>> horizontalMatches = new();
-        //List<List<Vector2I>> verticalMatches = new();
-        TableArray<bool> matchedTable = new(pills.Width, pills.Height);
+        matchedPatterns = [];
+        Pill pill = pills[newCell];
 
-        // Wrap the cells to check
-        // var wrappedCellsToCheck = WrapCellsToCheck(cellsToCheck);
-
-        List<Pattern> matchedPatterns = new();
-
-        (bool, int) checkIntersection(HashSet<Vector2I> cells)
+        static (bool, int) checkIntersection(HashSet<Vector2I> cells, List<Pattern> matchedPatterns)
         {
             for (int p = 0; p < matchedPatterns.Count; p++)
                 foreach (var cell in cells)
@@ -103,65 +111,46 @@ public class Board
             return (false, 0);
         }
 
-        // Check all cells for matches
-        foreach (var cell in cellsToCheck) //wrappedCellsToCheck)
+        // Check patterns in order of importance
+        bool hasLine = PatternChecker.CheckAllLines(this, pill, newCell, out var lineMatches);
+        bool hasSquare = PatternChecker.CheckAllSquares(this, pill, newCell, out var squareMatches);
+        // Square > line3 but Square < line4 etc
+        if (hasSquare && squareMatches.Count > lineMatches.Count)
         {
-            // Check patterns in order of importance
-            bool hasLine = PatternChecker.CheckAllLines(this, cell, out var lineMatches);
-            bool hasSquare = PatternChecker.CheckAllSquares(this, cell, out var squareMatches);
-            // Square > line3 but Square < line4 etc
-            if (hasSquare && squareMatches.Count > lineMatches.Count)
+            (bool intersects, int index) = checkIntersection(squareMatches, matchedPatterns);
+            // Add square only if no intersection with existing patterns
+            if (!intersects)
             {
-                (bool intersects, int index) = checkIntersection(squareMatches);
-                if (!intersects)
-                {
-                    matchedPatterns.Add(new Pattern(PatternType.Square, squareMatches.ToArray()));
-                }
+                matchedPatterns.Add(new Pattern(PatternType.Square, squareMatches.ToArray()));
             }
-            else
-            if (hasLine)
+        }
+        else
+        if (hasLine)
+        {
+            (bool intersects, int index) = checkIntersection(lineMatches, matchedPatterns);
+            // Combine patterns
+            if (intersects)
             {
-                (bool intersects, int index) = checkIntersection(lineMatches);
-                if (intersects)
+                var existingPattern = matchedPatterns[index];
+                // Upgrade square to line
+                if (existingPattern.Type == PatternType.Square && lineMatches.Count >= existingPattern.Cells.Length)
                 {
-                    // Combine patterns
-                    var existingPattern = matchedPatterns[index];
-                    // Maybe we just let squares and lines combine? 
-                    if (existingPattern.Type == PatternType.Square && lineMatches.Count >= existingPattern.Cells.Length)
-                    {
-                        // Upgrade square to line
-                        matchedPatterns[index] = new Pattern(PatternType.Line, lineMatches.ToArray());
-                        continue;
-                    }
+                    matchedPatterns[index] = new Pattern(PatternType.Line, [.. lineMatches]);
+                }
+                // Combine line with line
+                else
+                {
                     var combinedCells = existingPattern.Cells.Union(lineMatches).ToArray();
                     matchedPatterns[index] = new Pattern(existingPattern.Type, combinedCells);
                 }
-                else
-                {
-                    matchedPatterns.Add(new Pattern(PatternType.Line, lineMatches.ToArray()));
-                }
-                foreach (var match in lineMatches)
-                {
-                    // Could use this and set the pattern index in the cells so you can find it and combine. Then the checkIntersection wouldn't be needed.
-                    // But right now with Patterns, you dont need the matchedTable so better this way i guess?
-                    // Speed = use both
-                    // Memory = use only Patterns or only matchedTable
-                    // if(matchedTable[match]) 
-                    // {
-                    //     // combine lines?
-                    //     // unless it's a square
-                    // }
-                    matchedTable[match] = true;
-                }
-
+            }
+            else
+            {
+                matchedPatterns.Add(new Pattern(PatternType.Line, [.. lineMatches]));
             }
         }
 
-        foreach (var (i, j, currentPill) in pills)
-        {
-
-        }
-
+        return matchedPatterns.Count > 0;
     }
 
 }
@@ -203,7 +192,7 @@ public static class PatternChecker
         if (up && board.pills.Is(position + Vector2I.Up * 2, pill))
             return true;
         // Check 3 cells up-left
-        if (left && up && upleft) 
+        if (left && up && upleft)
             return true;
         return false;
     }
@@ -228,14 +217,14 @@ public static class PatternChecker
         return false;
     }
 
-    public static bool CheckAllSquares(Board board, Vector2I position, out HashSet<Vector2I> matchedPositions)
+    public static bool CheckAllSquares(Board board, Pill pill, Vector2I newPos, out HashSet<Vector2I> matchedPositions)
     {
         matchedPositions = [];
-        Pill currentPill = board.pills[position];
+        //Pill currentPill = board.pills[position];
         foreach (var square in Squares)
         {
-            var squareInGrid = square.Select(offset => position + offset);
-            if (squareInGrid.All(pos => board.pills.Is(pos, currentPill)))
+            var squareInGrid = square.Select(offset => newPos + offset);
+            if (squareInGrid.All(pos => board.pills.Is(pos, pill)))
             {
                 foreach (var pos in squareInGrid)
                     matchedPositions.Add(pos);
@@ -299,25 +288,33 @@ public static class PatternChecker
         return count >= 3;
     }
 
-    public static bool CheckAllLines(Board board, Vector2I position, out HashSet<Vector2I> matchedPositions)
+    public static bool CheckAllLines(Board board, Pill pill, Vector2I newPos, out HashSet<Vector2I> matchedPositions)
     {
         matchedPositions = [];
-        Pill currentPill = board.pills[position];
+        //Pill currentPill = board.pills[position];
 
         Vector2I[] horizontal = new Vector2I[board.pills.Width];
         Vector2I[] vertical = new Vector2I[board.pills.Height];
-        int horizontalCount = 0;
-        int verticalCount = 0;
+        int horizontalCount = 0; // count center
+        int verticalCount = 0; // count center
 
         // for each direction, put pills in vertical or horizontal lists
         foreach (var dir in Enum.GetValues<Direction>())
         {
             var dirVec = DirectionExtensions.ToVector2I(dir);
-            int max = dir.IsHorizontal() ? board.pills.Width : board.pills.Height;
-            for (int i = 0; i < max; i++)
+            int max = dir switch
             {
-                var pos = position + dirVec * i;
-                if (!board.pills.Is(pos, currentPill))
+                Direction.Right => board.pills.Width - newPos.X,
+                Direction.Left => newPos.X,
+                Direction.Down => board.pills.Height - newPos.Y,
+                Direction.Up => newPos.Y,
+                _ => 0
+            };
+            // start from 1 to skip center
+            for (int i = 1; i <= max; i++)
+            {
+                var pos = newPos + dirVec * i;
+                if (!board.pills.Is(pos, pill))
                     break;
                 if (dir.IsHorizontal())
                 {
@@ -332,7 +329,7 @@ public static class PatternChecker
             }
         }
         bool foundMatch = false;
-        if (horizontalCount >= 3)
+        if (horizontalCount >= 2) // 2 cells other than center
         {
             for (int i = 0; i < horizontalCount; i++)
             {
@@ -340,7 +337,7 @@ public static class PatternChecker
             }
             foundMatch = true;
         }
-        if (verticalCount >= 3)
+        if (verticalCount >= 2) // 2 cells other than center
         {
             for (int i = 0; i < verticalCount; i++)
             {
@@ -348,7 +345,8 @@ public static class PatternChecker
             }
             foundMatch = true;
         }
-
+        if(foundMatch)
+            matchedPositions.Add(newPos);
         return foundMatch;
     }
 
