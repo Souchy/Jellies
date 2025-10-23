@@ -5,6 +5,7 @@ using Souchy.Godot.structures;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace Jellies.src;
 
@@ -31,6 +32,23 @@ public class Board
     public TableArray<int> terrain;
     public TableArray<Pill> pills;
 
+    public event Func<IPillEvent, Task> OnPillEvent;
+    //public event Func<PillSwapEvent, Task> OnSwapPill
+    //{
+    //    add
+    //    {
+    //        PillEventHandlers.Add(typeof(PillSwapEvent), (ev) => value((PillSwapEvent)ev));
+    //    }
+    //    remove
+    //    {
+    //        PillEventHandlers.Remove(typeof(PillSwapEvent));
+    //    }
+    //}
+    //public event Action<PillCreateEvent> OnCreatePill;
+    //public event Action<PillGravityEvent> OnGravityPill;
+    //public event Action<PillDestroyEvent> OnDestroyPill;
+    //public Dictionary<Type, Func<IPillEvent, Task>> PillEventHandlers = new();
+
     /// <summary>
     /// 
     /// </summary>
@@ -41,15 +59,98 @@ public class Board
     {
         // Swap temporarily to check matches
         (pills[newPos], pills[oldPos]) = (pills[oldPos], pills[newPos]);
+        List<Pattern> matchedPatterns = [];
         // Check matches
-        bool matched1 = CheckMatchesOnSwap(out var matchedPatterns1, newPos);
-        bool matched2 = CheckMatchesOnSwap(out var matchedPatterns2, oldPos);
+        bool matched1 = CheckMatchesOnSwap(ref matchedPatterns, newPos);
+        bool matched2 = CheckMatchesOnSwap(ref matchedPatterns, oldPos);
         // Reverse the swap if no match
         if (!(matched1 || matched2))
         {
             (pills[newPos], pills[oldPos]) = (pills[oldPos], pills[newPos]);
         }
+        else
+        {
+            var events = new List<IPillEvent>();
+            pills[oldPos].OnSwap(this, oldPos, pills[newPos], ref events);
+            pills[newPos].OnSwap(this, newPos, pills[oldPos], ref events);
+            // TODO: Process swap events
+            // TODO: wait animations happening after swap
+            var tasks = events.Select(OnPillEvent);
+            Task.WaitAll(tasks);
+            ProcessMatches(matchedPatterns);
+        }
+
         return matched1 || matched2;
+    }
+
+    public void ProcessMatches(List<Pattern> patterns)
+    {
+        if (patterns.Count == 0)
+            return;
+        // Apply destruction
+        List<IPillEvent> destroyEvents = [];
+        foreach (var pattern in patterns)
+        {
+            foreach (var cell in pattern.Cells)
+            {
+                pills[cell].OnDestroy(this, cell, ref destroyEvents);
+            }
+        }
+        // TODO: Process events
+        // TODO: wait animations for destruction etc
+        var destroytasks = destroyEvents.Select(OnPillEvent);
+        Task.WaitAll(destroytasks);
+
+        // Apply gravity
+        List<PillGravityEvent> gravityEvents = ApplyGravity();
+        // TODO: Process gravity events
+        // TODO: wait gravity animation
+        var gravityTasks = gravityEvents.Select(ge => (IPillEvent) ge).Select(OnPillEvent);
+        Task.WaitAll(gravityTasks);
+
+        // Create new pills
+        List<IPillEvent> createEvents = [];
+        BoardGenerator.GenerateFillEmptyCells(this, ref createEvents);
+        // TODO: Process create/gravity events
+        // TODO: wait create/gravity animation
+        var createTasks = createEvents.Select(OnPillEvent);
+        Task.WaitAll(createTasks);
+
+        // Match again
+        List<Pattern> newMatchedPatterns = [];
+        foreach (var ge in gravityEvents)
+        {
+            CheckMatchesOnSwap(ref newMatchedPatterns, ge.ToPosition);
+        }
+        // Loop until no new matches
+        ProcessMatches(newMatchedPatterns);
+    }
+
+    public List<PillGravityEvent> ApplyGravity()
+    {
+        List<PillGravityEvent> gravityEvents = [];
+        for (int x = 0; x < pills.Width; x++)
+        {
+            int emptySpaces = 0;
+            for (int y = pills.Height - 1; y >= 0; y--)
+            {
+                var currentPill = pills[x, y];
+                if (currentPill is EmptyPill)
+                {
+                    emptySpaces++;
+                }
+                else
+                if (emptySpaces > 0)
+                {
+                    // Move pill down by emptySpaces
+                    pills[x, y + emptySpaces] = currentPill;
+                    pills[x, y] = new EmptyPill();
+                    gravityEvents.Add(new PillGravityEvent(new Vector2I(x, y), new Vector2I(x, y + emptySpaces)));
+                    y += emptySpaces; // Go back to check for more empty spaces
+                }
+            }
+        }
+        return gravityEvents;
     }
 
     /// <summary>
@@ -98,9 +199,8 @@ public class Board
     }
 
 
-    public bool CheckMatchesOnSwap(out List<Pattern> matchedPatterns, Vector2I newCell)
+    public bool CheckMatchesOnSwap(ref  List<Pattern> matchedPatterns, Vector2I newCell)
     {
-        matchedPatterns = [];
         Pill pill = pills[newCell];
 
         static (bool, int) checkIntersection(HashSet<Vector2I> cells, List<Pattern> matchedPatterns)
@@ -346,7 +446,7 @@ public static class PatternChecker
             }
             foundMatch = true;
         }
-        if(foundMatch)
+        if (foundMatch)
             matchedPositions.Add(newPos);
         return foundMatch;
     }

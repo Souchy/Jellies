@@ -6,17 +6,19 @@ namespace Jellies.src.pills;
 
 public interface Pill
 {
-    public void OnSwap(Board board, Vector2I Position, Pill other, out List<IPillEvent> events)
+    public bool CanSwap(Board board, Vector2I Position, Pill other)
     {
-        events = [];
+        return true;
     }
-    public void OnClick(Board board, Vector2I Position, out List<IPillEvent> events)
+    public void OnSwap(Board board, Vector2I Position, Pill other, ref List<IPillEvent> events)
     {
-        events = [];
+        OnDestroy(board, Position, ref events);
     }
-    public void OnDestroy(Board board, Vector2I Position, out List<IPillEvent> events)
+    public void OnClick(Board board, Vector2I Position, ref List<IPillEvent> events)
     {
-        events = [];
+    }
+    public void OnDestroy(Board board, Vector2I Position, ref List<IPillEvent> events)
+    {
     }
     public Node2D CreateNode()
     {
@@ -41,7 +43,7 @@ public record struct EmptyPill : Pill
     public Node2D CreateNode()
     {
         // Do nothing for empty pill
-        return new Node2D();
+        return new Sprite2D();
     }
 }
 
@@ -59,6 +61,10 @@ public record struct RegularPill(RegularPillColor Color) : Pill
         sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
+    public void OnDestroy(Board board, Vector2I Position, ref List<IPillEvent> events)
+    {
+        events.Add(new PillDestroyEvent(Position));
+    }
 }
 
 public record struct DynamitePill : Pill
@@ -71,8 +77,8 @@ public record struct DynamitePill : Pill
         sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
-    public void OnClick(Board board, Vector2I position, out List<IPillEvent> events) => OnDestroy(board, position, out events);
-    public void OnDestroy(Board board, Vector2I position, out List<IPillEvent> events)
+    public void OnClick(Board board, Vector2I position, ref List<IPillEvent> events) => OnDestroy(board, position, ref events);
+    public void OnDestroy(Board board, Vector2I position, ref List<IPillEvent> events)
     {
         /*
          * 5, 4, 3, 2, 3, 4, 5
@@ -81,7 +87,6 @@ public record struct DynamitePill : Pill
          * 4, 3, 2, 1, 2, 3, 4
          * 5, 4, 3, 2, 3, 4, 5
          */
-        events = [];
         for (int i = -BlastRadius; i <= BlastRadius; i++)
         {
             for (int j = -BlastRadius; j <= BlastRadius; j++)
@@ -108,10 +113,9 @@ public record struct BombPill : Pill
         sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
-    public void OnClick(Board board, Vector2I position, out List<IPillEvent> events) => OnDestroy(board, position, out events);
-    public void OnDestroy(Board board, Vector2I position, out List<IPillEvent> events)
+    public void OnClick(Board board, Vector2I position, ref List<IPillEvent> events) => OnDestroy(board, position, ref events);
+    public void OnDestroy(Board board, Vector2I position, ref List<IPillEvent> events)
     {
-        events = [];
         for (int i = -BlastRadius; i <= BlastRadius; i++)
         {
             for (int j = -BlastRadius; j <= BlastRadius; j++)
@@ -135,10 +139,9 @@ public record struct HorizontalPill : Pill
         sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
-    public void OnClick(Board board, Vector2I position, out List<IPillEvent> events) => OnDestroy(board, position, out events);
-    public void OnDestroy(Board board, Vector2I position, out List<IPillEvent> events)
+    public void OnClick(Board board, Vector2I position, ref List<IPillEvent> events) => OnDestroy(board, position, ref events);
+    public void OnDestroy(Board board, Vector2I position, ref List<IPillEvent> events)
     {
-        events = [];
         for (int i = 0; i < board.pills.Width; i++)
         {
             if (i == 0)
@@ -161,10 +164,9 @@ public record struct VerticalPill : Pill
         sprite.Scale = Constants.PillSize * Vector2.One / sprite.Texture.GetSize();
         return sprite;
     }
-    public void OnClick(Board board, Vector2I position, out List<IPillEvent> events) => OnDestroy(board, position, out events);
-    public void OnDestroy(Board board, Vector2I position, out List<IPillEvent> events)
+    public void OnClick(Board board, Vector2I position, ref List<IPillEvent> events) => OnDestroy(board, position, ref events);
+    public void OnDestroy(Board board, Vector2I position, ref List<IPillEvent> events)
     {
-        events = [];
         for (int j = 0; j < board.pills.Height; j++)
         {
             if (j == 0)
@@ -181,3 +183,5 @@ public record struct VerticalPill : Pill
 public interface IPillEvent;
 public record struct PillSwapEvent(Vector2I PositionA, Vector2I PositionB) : IPillEvent;
 public record struct PillDestroyEvent(Vector2I Position) : IPillEvent;
+public record struct PillGravityEvent(Vector2I FromPosition, Vector2I ToPosition) : IPillEvent;
+public record struct PillCreateEvent(Vector2I SpawnPosition, Vector2I RealPosition) : IPillEvent;

@@ -8,19 +8,27 @@ namespace Jellies.src;
 
 internal class BoardGenerator
 {
-    public static Board Generate(int difficulty)
+    public static Board Generate(int difficulty, ref List<IPillEvent> events)
     {
         Board board = new()
         {
-            pills = new(5, 5)
+            pills = new(5, 5, new EmptyPill())
         };
+        GenerateFillEmptyCells(board, ref events);
+        return board;
+    }
+
+
+    public static void GenerateFillEmptyCells(Board board, ref List<IPillEvent> events)
+    {
+        TableArray<Pill> tempTable = board.pills.Copy();
         // Assign random pills to positions
-        foreach (var (i, j, _) in board.pills)
+        foreach (var (i, j, val) in tempTable)
         {
+            if (val is not EmptyPill)
+                continue;
             uint rand = GD.Randi() % 100;
             Pill pill = null;
-            bool isValid = true;
-            int count = 0;
             pill = rand switch
             {
                 >= 100 => new DynamitePill(), // 1 % chance
@@ -28,6 +36,8 @@ internal class BoardGenerator
                 >= 98 => GD.Randi() % 2 == 0 ? new HorizontalPill() : new VerticalPill(), // 1 %
                 _ => new RegularPill(RegularPill.GetRandomColor()),
             };
+            bool isValid = true;
+            int count = 0;
             // Reroll regular color to avoid matches
             if (pill is RegularPill regularPill)
             {
@@ -46,7 +56,6 @@ internal class BoardGenerator
                         color += 1;
                         color %= Enum.GetValues<RegularPillColor>().Length;
                         var finalColor = (RegularPillColor) color;
-                        //var color2 = rp.Color + 1;
                         regularPill = new RegularPill(finalColor);
                         count++;
                     }
@@ -57,13 +66,21 @@ internal class BoardGenerator
             {
                 GD.Print($"Couldnt get a good pill at pos ({i}, {j})");
             }
-            board.pills[i, j] = pill;
+            tempTable[i, j] = pill;
+            events.Add(new PillCreateEvent(new(i, -1), new(i, j))); // create above board
+            events.Add(new PillGravityEvent(new(i, -1), new(i, j))); // gravity to position
         }
-        if(board.CheckIsDeadlock())
+        // If deadlock, try again
+        if (board.CheckIsDeadlock())
         {
-            return Generate(difficulty);
+            events.Clear();
+            GenerateFillEmptyCells(board, ref events);
         }
-        return board;
+        else
+        // Otherwise, set board table
+        {
+            board.pills = tempTable;
+        }
     }
 
 }

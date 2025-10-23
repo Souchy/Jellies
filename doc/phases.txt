@@ -1,0 +1,19 @@
+
+
+1. generate board
+2. input swap
+3. check swap and remember matching patterns
+4. if match: move sprites in table. else: reset board
+5. trigger matched cells.ondestroy? 
+6. trigger adjacent tile effects (ex: explosion next to a box breaks the box)
+7. apply gravity to board
+	a. for each cell starting from the bottom, check if it's empty and pull the pill above to itself? 
+	b. create a PillGravityEvent for this
+	c. animate gravity on sprite2ds
+	d. wait for animation to be done for all pills
+	//e. update position of pills in the board table and node table
+8. generate new pills in empty cells
+	a. check for deadlock and generate again if necessary
+	b. animate gravity on new sprite2ds
+11. check matches on the newly generated pills
+12. trigger matched cells.ondestroy

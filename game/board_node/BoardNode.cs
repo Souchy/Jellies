@@ -2,8 +2,12 @@ using Godot;
 using Godot.Sharp.Extras;
 using Jellies.game.pill_node;
 using Jellies.src;
+using Jellies.src.pills;
 using Souchy.Godot.structures;
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Jellies.game.board_node;
 
@@ -41,7 +45,9 @@ public partial class BoardNode : Node2D
     public void StartGame()
     {
         // Clear data, nodes and shapes
-        Board = BoardGenerator.Generate(difficulty: 1);
+        List<IPillEvent> creationEvents = [];
+        Board = BoardGenerator.Generate(difficulty: 1, ref creationEvents);
+        Board.OnPillEvent += OnPillEvent;
         PillNodesTable = new(Board.pills.Width, Board.pills.Height, null);
         Pills.RemoveAndQueueFreeChildren();
         PhysicsServer2D.AreaClearShapes(Area2D.GetRid());
@@ -54,30 +60,71 @@ public partial class BoardNode : Node2D
         LblDebug.Position = Vector2.Zero - halfBoardOffset - new Vector2(0, 100);
 
         // New nodes
-        foreach (var (i, j, pill) in Board.pills)
-        {
-            var sprite = pill.CreateNode();
-            var pillnode = GD.Load<PackedScene>("res://game/pill_node/PillNode.tscn").Instantiate<PillNode>();
-            pillnode.AddChild(sprite);
-            pillnode.Position = new Vector2(i, j) * Constants.PillSize;
-            pillnode.Board = this.Board;
-            //pillnode.OnDrag += (node) =>
-            //{
-            //    DraggingNode = pillnode;
-            //    DraggingNode.ZIndex = 10;
-            //};
-            pillnode.ZIndex = 0;
-            PillNodesTable[i, j] = pillnode;
-            // pillnode.OnExit += (node) => {
-            //     this.area.remove(node.shape); // TODO
-            // };
-            // Create shape
-            var shapeRid = PhysicsServer2D.RectangleShapeCreate();
-            PhysicsServer2D.ShapeSetData(shapeRid, Vector2.One * Constants.PillSize / 2);
-            PhysicsServer2D.AreaAddShape(Area2D.GetRid(), shapeRid, new Transform2D(0, pillnode.Position));
-            Pills.AddChild(pillnode);
-        }
+        //foreach (var (i, j, pill) in Board.pills)
+        //{
+        //    CreatePillNode(new PillCreateEvent(new(i, j), new(i, j)));
+        //}
+        // Process creation events
+        var tasks = creationEvents.Select(OnPillEvent);
+        Task.WaitAll(tasks);
+    }
 
+    private void CreatePillNode(PillCreateEvent ev)
+    {
+        var pill = Board.pills[ev.RealPosition];
+        var sprite = pill.CreateNode();
+        var pillnode = GD.Load<PackedScene>("res://game/pill_node/PillNode.tscn").Instantiate<PillNode>();
+        pillnode.AddChild(sprite);
+        pillnode.Position = ev.SpawnPosition * Constants.PillSize;
+        pillnode.Board = this.Board;
+        //pillnode.OnDrag += (node) =>
+        //{
+        //    DraggingNode = pillnode;
+        //    DraggingNode.ZIndex = 10;
+        //};
+        pillnode.ZIndex = 0;
+        PillNodesTable[ev.RealPosition] = pillnode;
+        // pillnode.OnExit += (node) => {
+        //     this.area.remove(node.shape); // TODO
+        // };
+        // Create shape
+        var shapeRid = PhysicsServer2D.RectangleShapeCreate();
+        PhysicsServer2D.ShapeSetData(shapeRid, Vector2.One * Constants.PillSize / 2);
+        PhysicsServer2D.AreaAddShape(Area2D.GetRid(), shapeRid, new Transform2D(0, pillnode.Position));
+        Pills.AddChild(pillnode);
+    }
+
+    private async Task OnPillEvent(IPillEvent ev)
+    {
+        if (ev is PillDestroyEvent destroyEvent)
+        {
+            var pillNode = PillNodesTable[destroyEvent.Position];
+            // Animation + remove node
+            var anim = pillNode.GetNode<AnimationPlayer>("AnimationPlayer");
+            anim.Play("destroy");
+            anim.AnimationFinished += name =>
+            {
+                pillNode.QueueFree();
+            };
+            // Remove from table
+            PillNodesTable[destroyEvent.Position] = null;
+        }
+        else
+        if (ev is PillCreateEvent createEvent)
+        {
+            CreatePillNode(createEvent);
+        }
+        else
+        if (ev is PillGravityEvent gravityEvent)
+        {
+            // Get the node, it's already in the right position in the table.
+            var toNode = PillNodesTable[gravityEvent.ToPosition];
+            // TODO: Move node to new position with animation
+            //var anim = toNode.GetNode<AnimationPlayer>("AnimationPlayer");
+            //anim.Play("fall");
+            //toNode.Position = gravityEvent.ToPosition * Constants.PillSize;
+            await toNode.PlayFallAsync(gravityEvent.ToPosition * Constants.PillSize);
+        }
     }
 
     private void PillNode_MouseEntered()
