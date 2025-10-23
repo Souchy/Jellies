@@ -34,19 +34,20 @@ public class Board
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="pos1">Start position of the dragged node</param>
-    /// <param name="pos2">End position of the dragged node</param>
+    /// <param name="oldPos">Start position of the dragged node</param>
+    /// <param name="newPos">End position of the dragged node</param>
     /// <returns></returns>
-    public bool InputSwap(Vector2I pos1, Vector2I pos2)
+    public bool InputSwap(Vector2I oldPos, Vector2I newPos)
     {
         // Swap temporarily to check matches
-        (pills[pos2], pills[pos1]) = (pills[pos1], pills[pos2]);
-        bool matched1 = CheckMatchesOnSwap(out var matchedPatterns1, pos1, pos2);
-        bool matched2 = CheckMatchesOnSwap(out var matchedPatterns2, pos2, pos1);
+        (pills[newPos], pills[oldPos]) = (pills[oldPos], pills[newPos]);
+        // Check matches
+        bool matched1 = CheckMatchesOnSwap(out var matchedPatterns1, newPos);
+        bool matched2 = CheckMatchesOnSwap(out var matchedPatterns2, oldPos);
         // Reverse the swap if no match
         if (!(matched1 || matched2))
         {
-            (pills[pos2], pills[pos1]) = (pills[pos1], pills[pos2]);
+            (pills[newPos], pills[oldPos]) = (pills[oldPos], pills[newPos]);
         }
         return matched1 || matched2;
     }
@@ -97,7 +98,7 @@ public class Board
     }
 
 
-    public bool CheckMatchesOnSwap(out List<Pattern> matchedPatterns, Vector2I oldCell, Vector2I newCell) // params Vector2I[] cellsToCheck)
+    public bool CheckMatchesOnSwap(out List<Pattern> matchedPatterns, Vector2I newCell)
     {
         matchedPatterns = [];
         Pill pill = pills[newCell];
