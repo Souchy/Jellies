@@ -100,14 +100,17 @@ public partial class BoardNode : Node2D
         {
             var pillNode = PillNodesTable[destroyEvent.Position];
             // Animation + remove node
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             var anim = pillNode.GetNode<AnimationPlayer>("AnimationPlayer");
             anim.Play("destroy");
             anim.AnimationFinished += name =>
             {
                 pillNode.QueueFree();
+                tcs.SetResult(true);
             };
             // Remove from table
             PillNodesTable[destroyEvent.Position] = null;
+            await tcs.Task;
         }
         else
         if (ev is PillCreateEvent createEvent)
@@ -123,7 +126,19 @@ public partial class BoardNode : Node2D
             //var anim = toNode.GetNode<AnimationPlayer>("AnimationPlayer");
             //anim.Play("fall");
             //toNode.Position = gravityEvent.ToPosition * Constants.PillSize;
-            await toNode.PlayFallAsync(gravityEvent.ToPosition * Constants.PillSize);
+
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tween = toNode.CreateTween()
+                .TweenProperty(toNode, Node2D.PropertyName.Position.ToString(), gravityEvent.ToPosition * Constants.PillSize, 0.2f)
+                .SetTrans(Tween.TransitionType.Linear)
+                .SetEase(Tween.EaseType.InOut);
+            tween.Finished += () =>
+            {
+                toNode.Position = gravityEvent.ToPosition * Constants.PillSize;
+                tcs.SetResult(true);
+            };
+            //await toNode.PlayFallAsync(gravityEvent.ToPosition * Constants.PillSize);
+            await tcs.Task;
         }
     }
 
