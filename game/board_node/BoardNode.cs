@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Jellies.game.board_node;
 
@@ -70,7 +71,7 @@ public partial class BoardNode : Node2D
         Task.WaitAll(tasks);
     }
 
-    private void CreatePillNode(PillCreateEvent ev)
+    private async Task CreatePillNode(PillCreateEvent ev)
     {
         var pill = Board.pills[ev.RealPosition];
         var sprite = pill.CreateNode();
@@ -94,6 +95,13 @@ public partial class BoardNode : Node2D
         PhysicsServer2D.AreaAddShape(Area2D.GetRid(), shapeRid, new Transform2D(0, pillnode.Position));
         // Add to tree
         Pills.AddChild(pillnode);
+
+        var targetScale = sprite.Scale;
+        sprite.Scale = Vector2.Zero;
+        sprite.Modulate = Colors.Transparent;
+        var tween = GetTree().CreateTween().SetParallel(true);
+        tween.TweenProperty(sprite, Node2D.PropertyName.Scale.ToString(), targetScale, 0.2f);
+        tween.TweenProperty(sprite, Node2D.PropertyName.Modulate.ToString(), Colors.White, 0.2f);
     }
 
     private async Task OnPillEvent(IPillEvent ev)
@@ -122,27 +130,19 @@ public partial class BoardNode : Node2D
         else
         if (ev is PillGravityEvent gravityEvent)
         {
-            // Get the node, it's already in the right position in the table.
+            // Get the node, it's already in the right slot in the table.
             var toNode = PillNodesTable[gravityEvent.ToPosition];
-            // TODO: Move node to new position with animation
-            //var anim = toNode.GetNode<AnimationPlayer>("AnimationPlayer");
-            //anim.Play("fall");
-            //toNode.Position = gravityEvent.ToPosition * Constants.PillSize;
 
+            // Move node to new position with animation
             //var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
             var tween = GetTree().CreateTween();
             var tweenProp = tween.TweenProperty(toNode, Node2D.PropertyName.Position.ToString(), gravityEvent.ToPosition.ToVector2() * Constants.PillSize, 0.2f);
-
             //tweenProp.SetTrans(Tween.TransitionType.Linear)
             //.SetEase(Tween.EaseType.InOut);
             tween.Finished += () =>
             {
-                toNode.Position = gravityEvent.ToPosition.ToVector2() * Constants.PillSize;
                 //tcs.SetResult(true);
             };
-            tween.Play();
-            //await toNode.PlayFallAsync(gravityEvent.ToPosition * Constants.PillSize);
             //await tcs.Task;
             //await Task.CompletedTask;
         }
