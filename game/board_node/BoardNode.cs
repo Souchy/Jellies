@@ -91,8 +91,8 @@ public partial class BoardNode : Node2D
         sprite.Scale = Vector2.Zero;
         sprite.Modulate = Colors.Transparent;
         var tween = GetTree().CreateTween().SetParallel(true);
-        tween.TweenProperty(sprite, Node2D.PropertyName.Scale.ToString(), targetScale, 0.2f);
-        tween.TweenProperty(sprite, Node2D.PropertyName.Modulate.ToString(), Colors.White, 0.2f);
+        tween.TweenProperty(sprite, Node2D.PropertyName.Scale.ToString(), targetScale, 0.1f);
+        tween.TweenProperty(sprite, Node2D.PropertyName.Modulate.ToString(), Colors.White, 0.1f);
 
         // Task to await tween finish
         var tcs = new TaskCompletionSource<bool>();
@@ -136,9 +136,9 @@ public partial class BoardNode : Node2D
             var pillNode = PillNodesTable[gravityEvent.ToPosition];
             // Animation position
             var tween = GetTree().CreateTween();
-            tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(), gravityEvent.ToPosition.ToVector2() * Constants.PillSize, 0.2f);
-            //.SetTrans(Tween.TransitionType.Linear)
-            //.SetEase(Tween.EaseType.In);
+            tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(), gravityEvent.ToPosition.ToVector2() * Constants.PillSize, 0.4f)
+                .SetTrans(Tween.TransitionType.Bounce)
+                .SetEase(Tween.EaseType.Out);
             // Task to await tween finish
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             tween.Finished += () =>
