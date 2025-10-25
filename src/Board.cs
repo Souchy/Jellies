@@ -278,19 +278,19 @@ public static class PatternChecker
     public static readonly Vector2I[] SquareBottomRight = [Vector2I.Right, Vector2I.Down, Vector2I.Right + Vector2I.Down];
     public static readonly Vector2I[][] Squares = [SquareTopLeft, SquareTopRight, SquareBottomLeft, SquareBottomRight];
 
-    public static bool CheckMatchUpLeft(Board board, Vector2I position, Pill pill)
+    public static bool CheckMatchUpLeft(TableArray<Pill> pills, Vector2I position, Pill pill)
     {
-        var up = board.pills.Is(position + Vector2I.Up, pill);
-        var upleft = board.pills.Is(position + Vector2I.Left + Vector2I.Up, pill);
-        var left = board.pills.Is(position + Vector2I.Left, pill);
+        var up = pills.Is(position + Vector2I.Up, pill);//board.pills.Is(position + Vector2I.Up, pill);
+        var upleft = pills.Is(position + Vector2I.Left + Vector2I.Up, pill);
+        var left = pills.Is(position + Vector2I.Left, pill);
         // If both up and left are false, no match possible
         if ((up || left) == false)
             return false;
         // check 2 cells left
-        if (left && board.pills.Is(position + Vector2I.Left * 2, pill))
+        if (left && pills.Is(position + Vector2I.Left * 2, pill))
             return true;
         // Check 2 cells up
-        if (up && board.pills.Is(position + Vector2I.Up * 2, pill))
+        if (up && pills.Is(position + Vector2I.Up * 2, pill))
             return true;
         // Check 3 cells up-left
         if (left && up && upleft)

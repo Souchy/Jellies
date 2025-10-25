@@ -47,7 +47,7 @@ public partial class BoardNode : Node2D
         // Clear data, nodes and shapes
         List<IPillEvent> creationEvents = [];
         Board = BoardGenerator.Generate(difficulty: 1, ref creationEvents);
-        Board.OnPillEvent += OnPillEvent;
+        //Board.OnPillEvent += OnPillEvent;
         PillNodesTable = new(Board.pills.Width, Board.pills.Height, null);
         Pills.RemoveAndQueueFreeChildren();
         PhysicsServer2D.AreaClearShapes(Area2D.GetRid());
@@ -60,13 +60,13 @@ public partial class BoardNode : Node2D
         LblDebug.Position = Vector2.Zero - halfBoardOffset - new Vector2(0, 100);
 
         // New nodes
-        //foreach (var (i, j, pill) in Board.pills)
-        //{
-        //    CreatePillNode(new PillCreateEvent(new(i, j), new(i, j)));
-        //}
+        foreach (var (i, j, pill) in Board.pills)
+        {
+            CreatePillNode(new PillCreateEvent(new(i, j), new(i, j)));
+        }
         // Process creation events
-        var tasks = creationEvents.Select(OnPillEvent);
-        Task.WaitAll(tasks);
+        //var tasks = creationEvents.Select(OnPillEvent);
+        //Task.WaitAll(tasks);
     }
 
     private void CreatePillNode(PillCreateEvent ev)

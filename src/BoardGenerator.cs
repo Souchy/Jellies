@@ -31,9 +31,9 @@ internal class BoardGenerator
             Pill pill = null;
             pill = rand switch
             {
-                >= 100 => new DynamitePill(), // 1 % chance
-                >= 99 => new BombPill(), // 1 %
-                >= 98 => GD.Randi() % 2 == 0 ? new HorizontalPill() : new VerticalPill(), // 1 %
+                >= 99 => new DynamitePill(), // 1 % chance
+                >= 98 => new BombPill(), // 1 %
+                >= 97 => GD.Randi() % 2 == 0 ? new HorizontalPill() : new VerticalPill(), // 1 %
                 _ => new RegularPill(RegularPill.GetRandomColor()),
             };
             bool isValid = true;
@@ -43,7 +43,7 @@ internal class BoardGenerator
             {
                 do
                 {
-                    var hasMatch = PatternChecker.CheckMatchUpLeft(board, new Vector2I(i, j), regularPill);
+                    var hasMatch = PatternChecker.CheckMatchUpLeft(tempTable, new Vector2I(i, j), regularPill);
                     if (isValid == false && !hasMatch)
                     {
                         GD.Print("saved");

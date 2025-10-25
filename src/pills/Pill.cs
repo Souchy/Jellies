@@ -23,7 +23,7 @@ public interface Pill
     public Node2D CreateNode()
     {
         // Default implementation does nothing
-        throw new System.NotImplementedException();
+        throw new NotImplementedException();
     }
 }
 
