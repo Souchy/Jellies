@@ -1,0 +1,40 @@
+
+
+Pills
+- Regular - color
+- Horizontal
+- Vertical
+- Bomb radius 2
+- Dynamite radius 3
+- ColorBomb (Disco) -> destroy all of 1 color
+- Helico - 1 cross -> hits targets
+
+
+IPill {
+	onDestroy();
+}
+
+
+
+Pills [
+	pillnode0, {0, 0}
+	pillnode1, {0, 1}
+	pillnode2, {0, 2}
+	pillnode3, {1, 0}
+	pillnode4, {1, 1}
+	pillnode5, {1, 2}
+]
+
+Boardpills [
+	
+]
+
+
+
+
+Input click
+	- boardPos = getClickBoardPos
+	- pilldata = board[boardPos]
+	- index = board.Index(boardPos)
+
+	

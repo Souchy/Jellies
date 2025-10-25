@@ -33,21 +33,6 @@ public class Board
     public TableArray<Pill> pills;
 
     public event Func<IPillEvent, Task> OnPillEvent;
-    //public event Func<PillSwapEvent, Task> OnSwapPill
-    //{
-    //    add
-    //    {
-    //        PillEventHandlers.Add(typeof(PillSwapEvent), (ev) => value((PillSwapEvent)ev));
-    //    }
-    //    remove
-    //    {
-    //        PillEventHandlers.Remove(typeof(PillSwapEvent));
-    //    }
-    //}
-    //public event Action<PillCreateEvent> OnCreatePill;
-    //public event Action<PillGravityEvent> OnGravityPill;
-    //public event Action<PillDestroyEvent> OnDestroyPill;
-    //public Dictionary<Type, Func<IPillEvent, Task>> PillEventHandlers = new();
 
     /// <summary>
     /// 

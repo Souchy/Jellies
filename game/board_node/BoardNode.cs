@@ -46,8 +46,9 @@ public partial class BoardNode : Node2D
     {
         // Clear data, nodes and shapes
         List<IPillEvent> creationEvents = [];
+        Board?.OnPillEvent -= OnPillEvent;
         Board = BoardGenerator.Generate(difficulty: 1, ref creationEvents);
-        //Board.OnPillEvent += OnPillEvent;
+        Board.OnPillEvent += OnPillEvent;
         PillNodesTable = new(Board.pills.Width, Board.pills.Height, null);
         Pills.RemoveAndQueueFreeChildren();
         PhysicsServer2D.AreaClearShapes(Area2D.GetRid());
@@ -60,13 +61,13 @@ public partial class BoardNode : Node2D
         LblDebug.Position = Vector2.Zero - halfBoardOffset - new Vector2(0, 100);
 
         // New nodes
-        foreach (var (i, j, pill) in Board.pills)
-        {
-            CreatePillNode(new PillCreateEvent(new(i, j), new(i, j)));
-        }
+        //foreach (var (i, j, pill) in Board.pills)
+        //{
+        //    CreatePillNode(new PillCreateEvent(new(i, j), new(i, j)));
+        //}
         // Process creation events
-        //var tasks = creationEvents.Select(OnPillEvent);
-        //Task.WaitAll(tasks);
+        var tasks = creationEvents.Select(OnPillEvent);
+        Task.WaitAll(tasks);
     }
 
     private void CreatePillNode(PillCreateEvent ev)
@@ -91,6 +92,7 @@ public partial class BoardNode : Node2D
         var shapeRid = PhysicsServer2D.RectangleShapeCreate();
         PhysicsServer2D.ShapeSetData(shapeRid, Vector2.One * Constants.PillSize / 2);
         PhysicsServer2D.AreaAddShape(Area2D.GetRid(), shapeRid, new Transform2D(0, pillnode.Position));
+        // Add to tree
         Pills.AddChild(pillnode);
     }
 
@@ -127,18 +129,22 @@ public partial class BoardNode : Node2D
             //anim.Play("fall");
             //toNode.Position = gravityEvent.ToPosition * Constants.PillSize;
 
-            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var tween = toNode.CreateTween()
-                .TweenProperty(toNode, Node2D.PropertyName.Position.ToString(), gravityEvent.ToPosition * Constants.PillSize, 0.2f)
-                .SetTrans(Tween.TransitionType.Linear)
-                .SetEase(Tween.EaseType.InOut);
+            //var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var tween = GetTree().CreateTween();
+            var tweenProp = tween.TweenProperty(toNode, Node2D.PropertyName.Position.ToString(), gravityEvent.ToPosition.ToVector2() * Constants.PillSize, 0.2f);
+
+            //tweenProp.SetTrans(Tween.TransitionType.Linear)
+            //.SetEase(Tween.EaseType.InOut);
             tween.Finished += () =>
             {
-                toNode.Position = gravityEvent.ToPosition * Constants.PillSize;
-                tcs.SetResult(true);
+                toNode.Position = gravityEvent.ToPosition.ToVector2() * Constants.PillSize;
+                //tcs.SetResult(true);
             };
+            tween.Play();
             //await toNode.PlayFallAsync(gravityEvent.ToPosition * Constants.PillSize);
-            await tcs.Task;
+            //await tcs.Task;
+            //await Task.CompletedTask;
         }
     }
 
