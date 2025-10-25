@@ -2,6 +2,7 @@ using Godot;
 using Godot.Sharp.Extras;
 using Jellies.game.board_node;
 using System;
+using System.Threading.Tasks;
 
 namespace Jellies.game;
 
@@ -19,10 +20,13 @@ public partial class Game : Control //Node2D
         BtnPlay.Pressed += OnPlayBtnPressed;
     }
 
-    private void OnPlayBtnPressed()
+    private async void OnPlayBtnPressed()
     {
         GD.Print("Play button pressed");
-        BoardNode.StartGame();
+        // Start game task and disable input during the process (animations)
+        this.SetProcessInput(false);
+        await BoardNode.StartGame();
+        this.SetProcessInput(true);
     }
 
 }

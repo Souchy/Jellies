@@ -43,7 +43,7 @@ public partial class BoardNode : Node2D
         this.Area2D.MouseExited += PillNode_MouseExited;
     }
 
-    public void StartGame()
+    public async Task StartGame()
     {
         // Clear data, nodes and shapes
         List<IPillEvent> creationEvents = [];
@@ -61,90 +61,92 @@ public partial class BoardNode : Node2D
         Area2D.Position = Vector2.Zero - halfBoardOffset;
         LblDebug.Position = Vector2.Zero - halfBoardOffset - new Vector2(0, 100);
 
-        // New nodes
-        //foreach (var (i, j, pill) in Board.pills)
-        //{
-        //    CreatePillNode(new PillCreateEvent(new(i, j), new(i, j)));
-        //}
         // Process creation events
-        var tasks = creationEvents.Select(OnPillEvent);
-        Task.WaitAll(tasks);
+        IEnumerable<Task> tasks = creationEvents.Select(OnPillEvent);
+        await Task.WhenAll(tasks);
     }
 
     private async Task CreatePillNode(PillCreateEvent ev)
     {
         var pill = Board.pills[ev.RealPosition];
-        var sprite = pill.CreateNode();
         var pillnode = GD.Load<PackedScene>("res://game/pill_node/PillNode.tscn").Instantiate<PillNode>();
+        var sprite = pill.CreateNode();
         pillnode.AddChild(sprite);
         pillnode.Position = ev.SpawnPosition * Constants.PillSize;
         pillnode.Board = this.Board;
-        //pillnode.OnDrag += (node) =>
-        //{
-        //    DraggingNode = pillnode;
-        //    DraggingNode.ZIndex = 10;
-        //};
-        pillnode.ZIndex = 0;
         PillNodesTable[ev.RealPosition] = pillnode;
-        // pillnode.OnExit += (node) => {
-        //     this.area.remove(node.shape); // TODO
-        // };
+
         // Create shape
         var shapeRid = PhysicsServer2D.RectangleShapeCreate();
         PhysicsServer2D.ShapeSetData(shapeRid, Vector2.One * Constants.PillSize / 2);
-        PhysicsServer2D.AreaAddShape(Area2D.GetRid(), shapeRid, new Transform2D(0, pillnode.Position));
+        PhysicsServer2D.AreaAddShape(Area2D.GetRid(), shapeRid, new Transform2D(0, ev.RealPosition * Constants.PillSize));
+        //int shapeIdx = PhysicsServer2D.AreaGetShapeCount(Area2D.GetRid()) - 1; // TODO: Idk if this always works when destroying/creating new pills
+        //pillnode.TreeExited += () => PhysicsServer2D.AreaRemoveShape(Area2D.GetRid(), shapeIdx); // Remove shape on exit
+
         // Add to tree
         Pills.AddChild(pillnode);
 
+        // Animate scale & opacity
         var targetScale = sprite.Scale;
         sprite.Scale = Vector2.Zero;
         sprite.Modulate = Colors.Transparent;
         var tween = GetTree().CreateTween().SetParallel(true);
         tween.TweenProperty(sprite, Node2D.PropertyName.Scale.ToString(), targetScale, 0.2f);
         tween.TweenProperty(sprite, Node2D.PropertyName.Modulate.ToString(), Colors.White, 0.2f);
+
+        // Task to await tween finish
+        var tcs = new TaskCompletionSource<bool>();
+        tween.Finished += () => tcs.SetResult(true);
+        await tcs.Task;
     }
 
     private async Task OnPillEvent(IPillEvent ev)
     {
         if (ev is PillDestroyEvent destroyEvent)
         {
+            // TODO: PillDestroyEvent
             var pillNode = PillNodesTable[destroyEvent.Position];
-            // Animation + remove node
-            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var anim = pillNode.GetNode<AnimationPlayer>("AnimationPlayer");
-            anim.Play("destroy");
-            anim.AnimationFinished += name =>
+            if (pillNode == null)
             {
-                pillNode.QueueFree();
-                tcs.SetResult(true);
-            };
-            // Remove from table
-            PillNodesTable[destroyEvent.Position] = null;
-            await tcs.Task;
+                // FIXME: Shouldn't destroy the same node twice?
+                return;
+            }
+            // Animation + remove node
+            //var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            //// Destroy node
+            //var anim = pillNode.GetNode<AnimationPlayer>("AnimationPlayer");
+            //anim.Play("destroy");
+            //anim.AnimationFinished += name =>
+            //{
+            //    pillNode.QueueFree();
+            //    PillNodesTable[destroyEvent.Position] = null;
+            //    tcs.SetResult(true);
+            //};
+            //await tcs.Task;
         }
         else
         if (ev is PillCreateEvent createEvent)
         {
-            CreatePillNode(createEvent);
+            await CreatePillNode(createEvent);
         }
         else
         if (ev is PillGravityEvent gravityEvent)
         {
             // Get the node, it's already in the right slot in the table.
-            var toNode = PillNodesTable[gravityEvent.ToPosition];
-
-            // Move node to new position with animation
-            //var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var pillNode = PillNodesTable[gravityEvent.ToPosition];
+            // Animation position
             var tween = GetTree().CreateTween();
-            var tweenProp = tween.TweenProperty(toNode, Node2D.PropertyName.Position.ToString(), gravityEvent.ToPosition.ToVector2() * Constants.PillSize, 0.2f);
-            //tweenProp.SetTrans(Tween.TransitionType.Linear)
-            //.SetEase(Tween.EaseType.InOut);
+            tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(), gravityEvent.ToPosition.ToVector2() * Constants.PillSize, 0.2f);
+            //.SetTrans(Tween.TransitionType.Linear)
+            //.SetEase(Tween.EaseType.In);
+            // Task to await tween finish
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             tween.Finished += () =>
             {
-                //tcs.SetResult(true);
+                pillNode.Position = gravityEvent.ToPosition.ToVector2() * Constants.PillSize;
+                tcs.SetResult(true);
             };
-            //await tcs.Task;
-            //await Task.CompletedTask;
+            await tcs.Task;
         }
     }
 
@@ -214,7 +216,7 @@ public partial class BoardNode : Node2D
                     // if no match, reset both this node and the swapped node positions
                     if (!matched)
                     {
-                        DraggingNode.Position = dragStartPosition;
+                        PillNodesTable[dragStartBoardPos].Position = dragStartPosition;
                         PillNodesTable[lastBoardPos].Position = lastPos;
                     }
                     LblDebug.Text += $"\nMatched = {matched}";
