@@ -390,9 +390,9 @@ public static class PatternChecker
             var dirVec = DirectionExtensions.ToVector2I(dir);
             int max = dir switch
             {
-                Direction.Right => board.pills.Width - newPos.X,
+                Direction.Right => board.pills.Width - newPos.X - 1,
                 Direction.Left => newPos.X,
-                Direction.Down => board.pills.Height - newPos.Y,
+                Direction.Down => board.pills.Height - newPos.Y - 1,
                 Direction.Up => newPos.Y,
                 _ => 0
             };
