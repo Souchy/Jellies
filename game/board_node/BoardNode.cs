@@ -117,8 +117,8 @@ public partial class BoardNode : Node2D
                 return;
             }
             // Animation + remove node
-            //var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            //// Destroy node
+            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            // Destroy node
             //var anim = pillNode.GetNode<AnimationPlayer>("AnimationPlayer");
             //anim.Play("destroy");
             //anim.AnimationFinished += name =>
@@ -127,7 +127,10 @@ public partial class BoardNode : Node2D
             //    PillNodesTable[destroyEvent.Position] = null;
             //    tcs.SetResult(true);
             //};
-            //await tcs.Task;
+            pillNode.QueueFree();
+            PillNodesTable[destroyEvent.Position] = null;
+            tcs.SetResult(true);
+            await tcs.Task;
         }
         else
         if (ev is PillCreateEvent createEvent)
@@ -143,7 +146,7 @@ public partial class BoardNode : Node2D
             var tween = GetTree().CreateTween();
             var deltaPos = gravityEvent.ToPosition - gravityEvent.FromPosition;
             var animationTime = deltaPos.Y * 0.07f;
-            tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(), 
+            tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(),
                 gravityEvent.ToPosition.ToVector2() * Constants.PillSize, animationTime)
                 .SetTrans(Tween.TransitionType.Bounce)
                 .SetEase(Tween.EaseType.Out);

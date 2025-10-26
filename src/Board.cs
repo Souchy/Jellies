@@ -88,6 +88,11 @@ public class Board
         var destroytasks = destroyEvents.Select(OnPillEvent);
         Task.WaitAll(destroytasks);
 
+        // Clear board of destroyed pills
+        //foreach(var ev in destroyEvents)
+        //    if(ev is PillDestroyEvent pde)
+        //        pills[pde.Position] = new EmptyPill();
+
         // Apply gravity
         List<PillGravityEvent> gravityEvents = ApplyGravity();
         // TODO: Process gravity events

@@ -12,7 +12,7 @@ internal class BoardGenerator
     {
         Board board = new()
         {
-            pills = new(19, 15, new EmptyPill())
+            pills = new(5, 5, new EmptyPill())
         };
         GenerateFillEmptyCells(board, ref events);
         return board;
