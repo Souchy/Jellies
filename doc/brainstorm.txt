@@ -37,4 +37,6 @@ Input click
 	- pilldata = board[boardPos]
 	- index = board.Index(boardPos)
 
+	nodeId = conversion[index]
+	Pills.getNode(nodeId)
 	

@@ -12,7 +12,7 @@ internal class BoardGenerator
     {
         Board board = new()
         {
-            pills = new(5, 5, new EmptyPill())
+            pills = new(19, 15, new EmptyPill())
         };
         GenerateFillEmptyCells(board, ref events);
         return board;
@@ -67,8 +67,8 @@ internal class BoardGenerator
                 GD.Print($"Couldnt get a good pill at pos ({i}, {j})");
             }
             tempTable[i, j] = pill;
-            events.Add(new PillCreateEvent(new(i, j - board.pills.Height - i), new(i, j))); // create above board
-            events.Add(new PillGravityEvent(new(i, j - board.pills.Height - i), new(i, j))); // gravity to position
+            events.Add(new PillCreateEvent(new(i, (j - board.pills.Height) * 2), new(i, j))); // create above board
+            events.Add(new PillGravityEvent(new(i, (j - board.pills.Height) * 2), new(i, j))); // gravity to position
         }
         // If deadlock, try again
         if (board.CheckIsDeadlock())

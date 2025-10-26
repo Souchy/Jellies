@@ -136,7 +136,10 @@ public partial class BoardNode : Node2D
             var pillNode = PillNodesTable[gravityEvent.ToPosition];
             // Animation position
             var tween = GetTree().CreateTween();
-            tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(), gravityEvent.ToPosition.ToVector2() * Constants.PillSize, 0.4f)
+            var deltaPos = gravityEvent.ToPosition - gravityEvent.FromPosition;
+            var animationTime = deltaPos.Y * 0.07f;
+            tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(), 
+                gravityEvent.ToPosition.ToVector2() * Constants.PillSize, animationTime)
                 .SetTrans(Tween.TransitionType.Bounce)
                 .SetEase(Tween.EaseType.Out);
             // Task to await tween finish
