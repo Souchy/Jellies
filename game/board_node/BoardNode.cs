@@ -213,17 +213,16 @@ public partial class BoardNode : Node2D
                 if (wasSwapped)
                 {
                     LblDebug.Text += $"\nWas Swapped";
+                    // Swap the nodes in the node table too, temporarily
+                    (PillNodesTable[dragStartBoardPos], PillNodesTable[lastBoardPos]) 
+                        = (PillNodesTable[lastBoardPos], PillNodesTable[dragStartBoardPos]);
                     // Check if there's a match and swap the pills in the data board
                     bool matched = Board.InputSwap(dragStartBoardPos, lastBoardPos);
-                    // if matched, swap the nodes in the node table too.
-                    if (matched)
-                    {
-                        (PillNodesTable[dragStartBoardPos], PillNodesTable[lastBoardPos]) = (PillNodesTable[lastBoardPos], PillNodesTable[dragStartBoardPos]);
-                    }
-                    else
                     // if no match, reset both this node and the swapped node positions
                     if (!matched)
                     {
+                        (PillNodesTable[dragStartBoardPos], PillNodesTable[lastBoardPos]) 
+                            = (PillNodesTable[lastBoardPos], PillNodesTable[dragStartBoardPos]);
                         PillNodesTable[dragStartBoardPos].Position = dragStartPosition;
                         PillNodesTable[lastBoardPos].Position = lastPos;
                     }
