@@ -12,7 +12,7 @@ public interface Pill
     }
     public void OnSwap(Board board, Vector2I Position, Pill other, ref List<IPillEvent> events)
     {
-        OnDestroy(board, Position, ref events);
+        //OnDestroy(board, Position, ref events);
     }
     public void OnClick(Board board, Vector2I Position, ref List<IPillEvent> events)
     {
@@ -87,16 +87,19 @@ public record struct DynamitePill : Pill
          * 4, 3, 2, 1, 2, 3, 4
          * 5, 4, 3, 2, 3, 4, 5
          */
+        events.Add(new PillDestroyEvent(position));
         for (int i = -BlastRadius; i <= BlastRadius; i++)
         {
             for (int j = -BlastRadius; j <= BlastRadius; j++)
             {
                 if (i + j > BlastRadius + 1) // remove the corners
                     continue;
+                if(i == 0 && j == 0) // skip self
+                    continue;
                 Vector2I targetPos = new Vector2I(i, j) + position;
                 if (board.pills.Has(targetPos))
                 {
-                    events.Add(new PillDestroyEvent(targetPos));
+                    board.pills[targetPos].OnDestroy(board, targetPos, ref events);
                 }
             }
         }
@@ -116,14 +119,17 @@ public record struct BombPill : Pill
     public void OnClick(Board board, Vector2I position, ref List<IPillEvent> events) => OnDestroy(board, position, ref events);
     public void OnDestroy(Board board, Vector2I position, ref List<IPillEvent> events)
     {
+        events.Add(new PillDestroyEvent(position));
         for (int i = -BlastRadius; i <= BlastRadius; i++)
         {
             for (int j = -BlastRadius; j <= BlastRadius; j++)
             {
+                if (i == 0 && j == 0) // skip self
+                    continue;
                 Vector2I targetPos = new Vector2I(i, j) + position;
                 if (board.pills.Has(targetPos))
                 {
-                    events.Add(new PillDestroyEvent(targetPos));
+                    board.pills[targetPos].OnDestroy(board, targetPos, ref events);
                 }
             }
         }
@@ -142,14 +148,15 @@ public record struct HorizontalPill : Pill
     public void OnClick(Board board, Vector2I position, ref List<IPillEvent> events) => OnDestroy(board, position, ref events);
     public void OnDestroy(Board board, Vector2I position, ref List<IPillEvent> events)
     {
+        events.Add(new PillDestroyEvent(position));
         for (int i = 0; i < board.pills.Width; i++)
         {
-            if (i == 0)
+            if (i == position.X) // ignore self
                 continue;
-            Vector2I targetPos = new(i, 0);
+            Vector2I targetPos = new(i, position.Y);
             if (board.pills.Has(targetPos))
             {
-                events.Add(new PillDestroyEvent(targetPos));
+                board.pills[targetPos].OnDestroy(board, targetPos, ref events);
             }
         }
     }
@@ -167,14 +174,15 @@ public record struct VerticalPill : Pill
     public void OnClick(Board board, Vector2I position, ref List<IPillEvent> events) => OnDestroy(board, position, ref events);
     public void OnDestroy(Board board, Vector2I position, ref List<IPillEvent> events)
     {
+        events.Add(new PillDestroyEvent(position));
         for (int j = 0; j < board.pills.Height; j++)
         {
-            if (j == 0)
+            if (j == position.Y) // ignore self
                 continue;
-            Vector2I targetPos = new(0, j);
+            Vector2I targetPos = new(position.X, j);
             if (board.pills.Has(targetPos))
             {
-                events.Add(new PillDestroyEvent(targetPos));
+                board.pills[targetPos].OnDestroy(board, targetPos, ref events);
             }
         }
     }

@@ -81,6 +81,8 @@ public class Board
                 pills[cell].OnDestroy(this, cell, ref destroyEvents);
             }
         }
+        // Remove duplicate events
+        destroyEvents = destroyEvents.Distinct().ToList();
         // TODO: Process events
         // TODO: wait animations for destruction etc
         var destroytasks = destroyEvents.Select(OnPillEvent);
