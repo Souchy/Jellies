@@ -45,8 +45,11 @@ public partial class BoardNode : Node2D
 
     public async Task StartGame()
     {
+        Area2D.InputPickable = false;
+
         // Clear data, nodes and shapes
         List<IPillEvent> creationEvents = [];
+        DraggingNode = null;
         Board?.OnPillEvent -= OnPillEvent;
         Board = BoardGenerator.Generate(difficulty: 1, ref creationEvents);
         Board.OnPillEvent += OnPillEvent;
@@ -64,6 +67,8 @@ public partial class BoardNode : Node2D
         // Process creation events
         IEnumerable<Task> tasks = creationEvents.Select(OnPillEvent);
         await Task.WhenAll(tasks);
+
+        Area2D.InputPickable = true;
     }
 
     private async Task CreatePillNode(PillCreateEvent ev)

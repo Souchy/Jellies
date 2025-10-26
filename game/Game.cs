@@ -24,9 +24,7 @@ public partial class Game : Control //Node2D
     {
         GD.Print("Play button pressed");
         // Start game task and disable input during the process (animations)
-        this.SetProcessInput(false);
         await BoardNode.StartGame();
-        this.SetProcessInput(true);
     }
 
 }
