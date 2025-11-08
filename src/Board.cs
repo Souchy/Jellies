@@ -28,6 +28,7 @@ public enum PatternType
 public record struct Pattern(PatternType Type, Vector2I[] Cells);
 
 public record InputSwapRequest(Vector2I oldPos, Vector2I newPos) : IRequest<bool>;
+public record InputClickRequest(Vector2I pos) : IRequest<bool>;
 
 public class Board
 {
@@ -45,6 +46,7 @@ public class Board
     public Board()
     {
         RequestBus.SubscribeAsync<InputSwapRequest, bool>(OnInputSwap);
+        RequestBus.SubscribeAsync<InputClickRequest, bool>(OnInputClick);
     }
 
     /// <summary>
@@ -73,12 +75,59 @@ public class Board
             // TODO: wait animations happening after swap
             var tasks = events.Select(OnPillEvent);
             await Task.WhenAll(tasks);
-            await ProcessMatches(matchedPatterns);
+            // TODO: Process matched patterns
+            //await ProcessMatches(matchedPatterns);
         }
 
         return matched1 || matched2;
     }
 
+
+    private async Task<bool> OnInputClick(InputClickRequest req, CancellationToken token)
+    {
+        Pill clickedPill = pills[req.pos];
+        List<IPillEvent> events = [];
+        clickedPill.OnClick(this, req.pos, ref events);
+
+        await ProcessDestruction(events);
+
+        return true;
+    }
+
+
+    private async Task ProcessDestruction(List<IPillEvent> events)
+    {
+        var tasks = events.Select(ev => EventBus.PublishAsync(ev));
+        await Task.WhenAll(tasks);
+
+        for (int i = 0; i < events.Count; i++)
+        {
+            var ev = events[i];
+            if (ev is PillDestroyEvent pde)
+            {
+                for (int j = 1; j < pde.Positions.Length; j++)
+                {
+                    var pos = pde.Positions[j];
+                    var pill = pills[pos];
+                    List<IPillEvent> newEvents = [];
+                    // Check if destroying this pill creates more events
+                    pill.OnDestroy(this, pos, ref newEvents);
+                    // Check if destroying this pill generates reactions on adjacents cells
+                    // TODO
+                    await ProcessDestruction(newEvents);
+                }
+            }
+        }
+
+        foreach (var ev in events)
+            if (ev is PillDestroyEvent pde)
+                foreach (var pos in pde.Positions)
+                    pills[pos] = new EmptyPill();
+
+        // TODO: Apply gravity
+    }
+
+    /*
     private async Task ProcessMatches(List<Pattern> patterns)
     {
         if (patterns.Count == 0)
@@ -129,6 +178,7 @@ public class Board
         // Loop until no new matches
         await ProcessMatches(newMatchedPatterns);
     }
+    */
 
     private List<PillGravityEvent> ApplyGravity()
     {
