@@ -140,7 +140,12 @@ public partial class BoardNode : Node2D
         else
         if (ev is PillGravityEvent gravityEvent)
         {
-            // Get the node, it's already in the right slot in the table.
+            // Move pill in the table if it's a valid 'from' position (ex: on inputswap, when a match happens below this pill)
+            if (PillNodesTable.Has(gravityEvent.FromPosition))
+            {
+                PillNodesTable[gravityEvent.ToPosition] = PillNodesTable[gravityEvent.FromPosition];
+            }
+            // Get the node, it's already in the right slot in the table. (ex: on game start, pillnodes start outside the board range)
             var pillNode = PillNodesTable[gravityEvent.ToPosition];
             // Animation position
             var tween = GetTree().CreateTween();
