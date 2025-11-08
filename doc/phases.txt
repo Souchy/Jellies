@@ -1,19 +1,67 @@
 
 
+Board {
+	table<Pill> pills;
+	table<Terrain> terrain;
+}
+
+BoardNode {
+	table<PillNode> pillNodes;
+}
+
+
+--------------------------------------------------------------- Start Game
 1. generate board
-2. input swap
-3. check swap and remember matching patterns
-4. if match: move sprites in table. else: reset board
-5. trigger matched cells.ondestroy? 
-6. trigger adjacent tile effects (ex: explosion next to a box breaks the box)
-7. apply gravity to board
-	a. for each cell starting from the bottom, check if it's empty and pull the pill above to itself? 
-	b. create a PillGravityEvent for this
-	c. animate gravity on sprite2ds
-	d. wait for animation to be done for all pills
-	//e. update position of pills in the board table and node table
-8. generate new pills in empty cells
-	a. check for deadlock and generate again if necessary
-	b. animate gravity on new sprite2ds
-11. check matches on the newly generated pills
-12. trigger matched cells.ondestroy
+2. fill databoard
+3. PillCreateEvent
+	a. create node
+4. PillGravityEvent
+	a. pillNode = table[gravity.ToPos]
+	a. animate gravity node position from A to B
+--------------------------------------------------------------- Input Swap(oldPos, newPos)
+1. swap pills in table
+2. swap nodes in table
+3. check swap + remember matching patterns
+	a. if no match: 
+		reset tables + return
+5. List<PillDestroyEvent> events
+4. pills.OnSwap(events)
+	a. if special combo?
+		ex:
+		a. random cells PillSetEvent(pos, new BombPill())
+		b. foreach random cell pill.OnDestroy(events)
+5. foreach matched pattern: 
+	a. cells.ondestroy(events)
+6. ProcessDestroyEvents(events)
+
+// What to do if we have events on swap + a match? ex: swap [dynamite, red pill] and it matches 3 red pills
+
+--------------------------------------------------------------- Input Click(pos)
+1. pill.OnClick
+	a. pill.OnDestroy
+		a. otherPills.onDestroy 
+2. ProcessDestroyEvents
+---------------------------------------------------------------
+ProcessDestroyEvents(List<PillDestroyEvent> events)
+	3. process events
+		a. animate click
+		b. animate destroy pills
+	4. set empty pills where destroyed (data & nodes)
+		c. boardNode.pills[x,y] = null (can be done in the event handler with the animation)
+		d. board.pills[x,y] = null
+	5. apply gravity
+		a. for each cell starting from the bottom, check if it's empty and pull the pill above to itself? 
+		b. create a PillGravityEvent for this
+		c. animate gravity on sprite2ds
+		d. wait for animation to be done for all pills
+		//e. update position of pills in the board table and node table
+	6. process events
+		a. set node in the right slot in the table
+			a. table[gravity.ToPos] = table[gravity.FromPos]
+		b. pillNode = table[gravity.ToPos]
+		c. animate gravity node position from A to B
+	7. generate new pills in empty cells
+		a. check for deadlock and generate again if necessary
+		b. animate gravity on new sprite2ds
+	8. check matches on the newly generated pills
+	9. foreach matched pattern: cells.ondestroy
