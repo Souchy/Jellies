@@ -75,8 +75,7 @@ public class Board
             // TODO: wait animations happening after swap
             var tasks = events.Select(OnPillEvent);
             await Task.WhenAll(tasks);
-            // TODO: Process matched patterns
-            //await ProcessMatches(matchedPatterns);
+            await ProcessMatches(matchedPatterns);
         }
 
         return matched1 || matched2;
@@ -127,7 +126,7 @@ public class Board
         // TODO: Apply gravity
     }
 
-    /*
+    
     private async Task ProcessMatches(List<Pattern> patterns)
     {
         if (patterns.Count == 0)
@@ -151,7 +150,8 @@ public class Board
         // Clear board of destroyed pills
         foreach (var ev in destroyEvents)
             if (ev is PillDestroyEvent pde)
-                pills[pde.Position] = new EmptyPill();
+                foreach (var pos in pde.Positions)
+                    pills[pos] = new EmptyPill();
 
         // Apply gravity
         List<PillGravityEvent> gravityEvents = ApplyGravity();
@@ -178,7 +178,7 @@ public class Board
         // Loop until no new matches
         await ProcessMatches(newMatchedPatterns);
     }
-    */
+    
 
     private List<PillGravityEvent> ApplyGravity()
     {
