@@ -130,7 +130,7 @@ public class Board
         await ProcessMatches(newMatchedPatterns);
     }
 
-    public List<PillGravityEvent> ApplyGravity()
+    private List<PillGravityEvent> ApplyGravity()
     {
         List<PillGravityEvent> gravityEvents = [];
         for (int x = 0; x < pills.Width; x++)
@@ -157,29 +157,8 @@ public class Board
         return gravityEvents;
     }
 
-    /// <summary>
-    /// Given a set of cells to check, returns those cells and cells in a square around them.
-    /// </summary>
-    public HashSet<Vector2I> WrapCellsToCheck(params Vector2I[] cellsToCheck)
-    {
-        HashSet<Vector2I> possibleMoves = new();
-        foreach (var cell in cellsToCheck)
-        {
-            possibleMoves.Add(cell);
-            for (int i = -1; i <= 1; i++)
-            {
-                for (int j = -1; j <= 1; j++)
-                {
-                    var adjacent = cell + new Vector2I(i, j);
-                    possibleMoves.Add(adjacent);
-                }
-            }
-        }
-        return possibleMoves;
-    }
 
-
-    public bool CheckMatchesOnSwap(ref  List<Pattern> matchedPatterns, Vector2I newCell)
+    public bool CheckMatchesOnSwap(ref List<Pattern> matchedPatterns, Vector2I newCell)
     {
         Pill pill = pills[newCell];
 
