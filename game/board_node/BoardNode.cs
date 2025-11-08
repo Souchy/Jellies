@@ -196,9 +196,9 @@ public partial class BoardNode : Node2D
         }
     }
 
-    public override void _Input(InputEvent @event)
+
+    private async Task InputAsync(InputEvent @event)
     {
-        base._Input(@event);
         if (!IsDragging)
             return;
         var lastPos = DraggingNode.Position;
@@ -222,14 +222,17 @@ public partial class BoardNode : Node2D
                 {
                     LblDebug.Text += $"\nWas Swapped";
                     // Swap the nodes in the node table too, temporarily
-                    (PillNodesTable[dragStartBoardPos], PillNodesTable[lastBoardPos]) 
+                    (PillNodesTable[dragStartBoardPos], PillNodesTable[lastBoardPos])
                         = (PillNodesTable[lastBoardPos], PillNodesTable[dragStartBoardPos]);
+
                     // Check if there's a match and swap the pills in the data board
-                    bool matched = Board.InputSwap(dragStartBoardPos, lastBoardPos);
+                    //bool matched = Board.InputSwap(dragStartBoardPos, lastBoardPos);
+                    bool matched = await Board.RequestBus.RequestAsync(new InputSwapRequest(dragStartBoardPos, lastBoardPos));
+
                     // if no match, reset both this node and the swapped node positions
                     if (!matched)
                     {
-                        (PillNodesTable[dragStartBoardPos], PillNodesTable[lastBoardPos]) 
+                        (PillNodesTable[dragStartBoardPos], PillNodesTable[lastBoardPos])
                             = (PillNodesTable[lastBoardPos], PillNodesTable[dragStartBoardPos]);
                         PillNodesTable[dragStartBoardPos].Position = dragStartPosition;
                         PillNodesTable[lastBoardPos].Position = lastPos;
@@ -275,6 +278,11 @@ public partial class BoardNode : Node2D
                 }
             }
         }
+    }
+
+    public override void _Input(InputEvent @event)
+    {
+        _ = InputAsync(@event);
     }
 
     private Vector2 GetCurrentMotionPosition()

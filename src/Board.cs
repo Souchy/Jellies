@@ -2,9 +2,12 @@ using Godot;
 using Jellies.src.cells;
 using Jellies.src.pills;
 using Souchy.Godot.structures;
+using Souchy.Net.comm;
+using Souchy.Net.communication;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Jellies.src;
@@ -25,6 +28,8 @@ public enum PatternType
 
 public record struct Pattern(PatternType Type, Vector2I[] Cells);
 
+public record InputSwapRequest(Vector2I oldPos, Vector2I newPos) : IRequest<bool>;
+
 public class Board
 {
     public const int MaxWidth = 10;
@@ -32,43 +37,50 @@ public class Board
     public TableArray<int> terrain;
     public TableArray<Pill> pills;
 
+    public AsyncRequestBus RequestBus = new();
+    public EventBus EventBus = new();
+
     public event Func<IPillEvent, Task> OnPillEvent;
 
+
+    public Board()
+    {
+        RequestBus.SubscribeAsync<InputSwapRequest, bool>(OnInputSwap);
+    }
+
     /// <summary>
-    /// 
     /// </summary>
-    /// <param name="oldPos">Start position of the dragged node</param>
-    /// <param name="newPos">End position of the dragged node</param>
+    /// <param name="req">Request containing the Start and End pos of the swap</param>
     /// <returns></returns>
-    public bool InputSwap(Vector2I oldPos, Vector2I newPos)
+    private async Task<bool> OnInputSwap(InputSwapRequest req, CancellationToken token)
     {
         // Swap temporarily to check matches
-        (pills[newPos], pills[oldPos]) = (pills[oldPos], pills[newPos]);
+        (pills[req.newPos], pills[req.oldPos]) = (pills[req.oldPos], pills[req.newPos]);
         List<Pattern> matchedPatterns = [];
         // Check matches
-        bool matched1 = CheckMatchesOnSwap(ref matchedPatterns, newPos);
-        bool matched2 = CheckMatchesOnSwap(ref matchedPatterns, oldPos);
+        bool matched1 = CheckMatchesOnSwap(ref matchedPatterns, req.newPos);
+        bool matched2 = CheckMatchesOnSwap(ref matchedPatterns, req.oldPos);
         // Reverse the swap if no match
         if (!(matched1 || matched2))
         {
-            (pills[newPos], pills[oldPos]) = (pills[oldPos], pills[newPos]);
+            (pills[req.newPos], pills[req.oldPos]) = (pills[req.oldPos], pills[req.newPos]);
         }
         else
         {
             var events = new List<IPillEvent>();
-            pills[oldPos].OnSwap(this, oldPos, pills[newPos], ref events);
-            pills[newPos].OnSwap(this, newPos, pills[oldPos], ref events);
+            pills[req.oldPos].OnSwap(this, req.oldPos, pills[req.newPos], ref events);
+            pills[req.newPos].OnSwap(this, req.newPos, pills[req.oldPos], ref events);
             // TODO: Process swap events
             // TODO: wait animations happening after swap
             var tasks = events.Select(OnPillEvent);
-            Task.WaitAll(tasks);
-            ProcessMatches(matchedPatterns);
+            await Task.WhenAll(tasks);
+            await ProcessMatches(matchedPatterns);
         }
 
         return matched1 || matched2;
     }
 
-    public void ProcessMatches(List<Pattern> patterns)
+    private async Task ProcessMatches(List<Pattern> patterns)
     {
         if (patterns.Count == 0)
             return;
@@ -86,19 +98,19 @@ public class Board
         // TODO: Process events
         // TODO: wait animations for destruction etc
         var destroytasks = destroyEvents.Select(OnPillEvent);
-        Task.WaitAll(destroytasks);
+        await Task.WhenAll(destroytasks);
 
         // Clear board of destroyed pills
-        //foreach(var ev in destroyEvents)
-        //    if(ev is PillDestroyEvent pde)
-        //        pills[pde.Position] = new EmptyPill();
+        foreach (var ev in destroyEvents)
+            if (ev is PillDestroyEvent pde)
+                pills[pde.Position] = new EmptyPill();
 
         // Apply gravity
         List<PillGravityEvent> gravityEvents = ApplyGravity();
         // TODO: Process gravity events
         // TODO: wait gravity animation
         var gravityTasks = gravityEvents.Select(ge => (IPillEvent) ge).Select(OnPillEvent);
-        Task.WaitAll(gravityTasks);
+        await Task.WhenAll(gravityTasks);
 
         // Create new pills
         List<IPillEvent> createEvents = [];
@@ -106,7 +118,7 @@ public class Board
         // TODO: Process create/gravity events
         // TODO: wait create/gravity animation
         var createTasks = createEvents.Select(OnPillEvent);
-        Task.WaitAll(createTasks);
+        await Task.WhenAll(createTasks);
 
         // Match again
         List<Pattern> newMatchedPatterns = [];
@@ -114,8 +126,9 @@ public class Board
         {
             CheckMatchesOnSwap(ref newMatchedPatterns, ge.ToPosition);
         }
+
         // Loop until no new matches
-        ProcessMatches(newMatchedPatterns);
+        await ProcessMatches(newMatchedPatterns);
     }
 
     public List<PillGravityEvent> ApplyGravity()
