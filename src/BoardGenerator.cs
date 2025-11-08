@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Jellies.src;
 
-internal class BoardGenerator
+public static class BoardGenerator
 {
     public static Board Generate(int difficulty, ref List<IPillEvent> events)
     {
@@ -72,7 +72,7 @@ internal class BoardGenerator
             events.Add(new PillGravityEvent(new(i, (j - board.pills.Height) * 2), new(i, j))); // gravity to position
         }
         // If deadlock, try again
-        if (CheckIsDeadlock(board))
+        if (board.CheckIsDeadlock())
         {
             events.Clear();
             GenerateFillEmptyCells(board, ref events);
