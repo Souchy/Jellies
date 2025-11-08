@@ -146,30 +146,6 @@ public class Board
     }
 
     /// <summary>
-    /// Checks if there are no possible moves left.
-    /// Would also work to give move suggestions to the player.
-    /// TODO: Heavily threadable.
-    /// </summary>
-    public bool CheckIsDeadlock()
-    {
-        TableArray<Pill> pills = this.pills;
-        // if any cell contains a non-regular pill, the player can click on it to play.
-        if (pills.Any((cell) => cell.v is not EmptyPill && cell.v is not RegularPill))
-            return false;
-        // Check all cells for possible horse moves
-        foreach (var (i, j, currentPill) in pills)
-        {
-            bool hasHorseMove = PatternChecker.CheckAllHorseMoves(this, new(i, j));
-            if (hasHorseMove)
-                return false;
-            bool hasSnailMove = PatternChecker.CheckAllSnailMoves(this, new(i, j));
-            if (hasSnailMove)
-                return false;
-        }
-        return true;
-    }
-
-    /// <summary>
     /// Given a set of cells to check, returns those cells and cells in a square around them.
     /// </summary>
     public HashSet<Vector2I> WrapCellsToCheck(params Vector2I[] cellsToCheck)

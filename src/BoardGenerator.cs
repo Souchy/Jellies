@@ -3,6 +3,7 @@ using Jellies.src.pills;
 using Souchy.Godot.structures;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Jellies.src;
 
@@ -71,7 +72,7 @@ internal class BoardGenerator
             events.Add(new PillGravityEvent(new(i, (j - board.pills.Height) * 2), new(i, j))); // gravity to position
         }
         // If deadlock, try again
-        if (board.CheckIsDeadlock())
+        if (CheckIsDeadlock(board))
         {
             events.Clear();
             GenerateFillEmptyCells(board, ref events);
@@ -81,6 +82,30 @@ internal class BoardGenerator
         {
             board.pills = tempTable;
         }
+    }
+
+    /// <summary>
+    /// Checks if there are no possible moves left.
+    /// Would also work to give move suggestions to the player.
+    /// TODO: Heavily threadable.
+    /// </summary>
+    private static bool CheckIsDeadlock(this Board board)
+    {
+        TableArray<Pill> pills = board.pills;
+        // if any cell contains a non-regular pill, the player can click on it to play.
+        if (pills.Any((cell) => cell.v is not EmptyPill && cell.v is not RegularPill))
+            return false;
+        // Check all cells for possible horse moves
+        foreach (var (i, j, currentPill) in pills)
+        {
+            bool hasHorseMove = PatternChecker.CheckAllHorseMoves(board, new(i, j));
+            if (hasHorseMove)
+                return false;
+            bool hasSnailMove = PatternChecker.CheckAllSnailMoves(board, new(i, j));
+            if (hasSnailMove)
+                return false;
+        }
+        return true;
     }
 
 }
