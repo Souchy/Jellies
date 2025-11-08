@@ -3,8 +3,10 @@ using Godot.Sharp.Extras;
 using Jellies.game.pill_node;
 using Jellies.src;
 using Jellies.src.pills;
+using Jellies.src.util;
 using Souchy.Godot.structures;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,7 +16,6 @@ namespace Jellies.game.board_node;
 
 public partial class BoardNode : Node2D
 {
-
     #region Nodes
     [NodePath] public Node2D Pills { get; set; }
     [NodePath] public Label LblDebug { get; set; }
@@ -50,9 +51,11 @@ public partial class BoardNode : Node2D
         // Clear data, nodes and shapes
         List<IPillEvent> creationEvents = [];
         DraggingNode = null;
-        Board?.OnPillEvent -= OnPillEvent;
+        //Board?.OnPillEvent -= OnPillEvent;
         Board = BoardGenerator.Generate(difficulty: 1, ref creationEvents);
-        Board.OnPillEvent += OnPillEvent;
+        //Board.OnPillEvent += OnPillEvent;
+        Board.EventBus.Subscribe(OnDestruction, OnCreation, OnGravity);
+
         PillNodesTable = new(Board.pills.Width, Board.pills.Height, null);
         Pills.RemoveAndQueueFreeChildren();
         PhysicsServer2D.AreaClearShapes(Area2D.GetRid());
@@ -64,138 +67,18 @@ public partial class BoardNode : Node2D
         Area2D.Position = Vector2.Zero - halfBoardOffset;
         LblDebug.Position = Vector2.Zero - halfBoardOffset - new Vector2(0, 100);
 
-        // Process creation events
-        IEnumerable<Task> tasks = creationEvents.Select(OnPillEvent);
+        // Process creation & gravity events
+        var tasks = creationEvents.Select(ev => Board.EventBus.PublishAsync(ev));
         await Task.WhenAll(tasks);
 
         Area2D.InputPickable = true;
     }
 
-    private async Task CreatePillNode(PillCreateEvent ev)
+    #region Global Inputs
+    public override void _Input(InputEvent @event)
     {
-        var pill = Board.pills[ev.RealPosition];
-        var pillnode = GD.Load<PackedScene>("res://game/pill_node/PillNode.tscn").Instantiate<PillNode>();
-        var sprite = pill.CreateNode();
-        pillnode.AddChild(sprite);
-        pillnode.Position = ev.SpawnPosition * Constants.PillSize;
-        pillnode.Board = this.Board;
-        PillNodesTable[ev.RealPosition] = pillnode;
-
-        // Create shape
-        var shapeRid = PhysicsServer2D.RectangleShapeCreate();
-        PhysicsServer2D.ShapeSetData(shapeRid, Vector2.One * Constants.PillSize / 2);
-        PhysicsServer2D.AreaAddShape(Area2D.GetRid(), shapeRid, new Transform2D(0, ev.RealPosition * Constants.PillSize));
-        //int shapeIdx = PhysicsServer2D.AreaGetShapeCount(Area2D.GetRid()) - 1; // TODO: Idk if this always works when destroying/creating new pills
-        //pillnode.TreeExited += () => PhysicsServer2D.AreaRemoveShape(Area2D.GetRid(), shapeIdx); // Remove shape on exit
-
-        // Add to tree
-        Pills.AddChild(pillnode);
-
-        // Animate scale & opacity
-        var targetScale = sprite.Scale;
-        sprite.Scale = Vector2.Zero;
-        sprite.Modulate = Colors.Transparent;
-        var tween = GetTree().CreateTween().SetParallel(true);
-        tween.TweenProperty(sprite, Node2D.PropertyName.Scale.ToString(), targetScale, 0.1f);
-        tween.TweenProperty(sprite, Node2D.PropertyName.Modulate.ToString(), Colors.White, 0.1f);
-
-        // Task to await tween finish
-        var tcs = new TaskCompletionSource<bool>();
-        tween.Finished += () => tcs.SetResult(true);
-        await tcs.Task;
+        _ = InputAsync(@event);
     }
-
-    private async Task OnPillEvent(IPillEvent ev)
-    {
-        if (ev is PillDestroyEvent destroyEvent)
-        {
-            // TODO: PillDestroyEvent
-            var pillNode = PillNodesTable[destroyEvent.Position];
-            if (pillNode == null)
-            {
-                // FIXME: Shouldn't destroy the same node twice?
-                return;
-            }
-            // Animation + remove node
-            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            // Destroy node
-            //var anim = pillNode.GetNode<AnimationPlayer>("AnimationPlayer");
-            //anim.Play("destroy");
-            //anim.AnimationFinished += name =>
-            //{
-            //    pillNode.QueueFree();
-            //    PillNodesTable[destroyEvent.Position] = null;
-            //    tcs.SetResult(true);
-            //};
-            pillNode.QueueFree();
-            PillNodesTable[destroyEvent.Position] = null;
-            tcs.SetResult(true);
-            await tcs.Task;
-        }
-        else
-        if (ev is PillCreateEvent createEvent)
-        {
-            await CreatePillNode(createEvent);
-        }
-        else
-        if (ev is PillGravityEvent gravityEvent)
-        {
-            // Move pill in the table if it's a valid 'from' position (ex: on inputswap, when a match happens below this pill)
-            if (PillNodesTable.Has(gravityEvent.FromPosition))
-            {
-                PillNodesTable[gravityEvent.ToPosition] = PillNodesTable[gravityEvent.FromPosition];
-            }
-            // Get the node, it's already in the right slot in the table. (ex: on game start, pillnodes start outside the board range)
-            var pillNode = PillNodesTable[gravityEvent.ToPosition];
-            // Animation position
-            var tween = GetTree().CreateTween();
-            var deltaPos = gravityEvent.ToPosition - gravityEvent.FromPosition;
-            var animationTime = deltaPos.Y * 0.07f;
-            tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(),
-                gravityEvent.ToPosition.ToVector2() * Constants.PillSize, animationTime)
-                .SetTrans(Tween.TransitionType.Bounce)
-                .SetEase(Tween.EaseType.Out);
-            // Task to await tween finish
-            var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            tween.Finished += () =>
-            {
-                pillNode.Position = gravityEvent.ToPosition.ToVector2() * Constants.PillSize;
-                tcs.SetResult(true);
-            };
-            await tcs.Task;
-        }
-    }
-
-    private void PillNode_MouseEntered()
-    {
-        Input.SetDefaultCursorShape(Input.CursorShape.PointingHand);
-    }
-
-    private void PillNode_MouseExited()
-    {
-        if (!IsDragging)
-            Input.SetDefaultCursorShape(Input.CursorShape.Arrow);
-    }
-
-    private void PillNode_InputEvent(Node viewport, InputEvent @event, long shapeIdx)
-    {
-        if (@event is InputEventMouseButton mouseClickEvent && mouseClickEvent.ButtonIndex == MouseButton.Left)
-        {
-            // On drag start
-            if (mouseClickEvent.Pressed && !IsDragging)
-            {
-                var grid2dPos = GetMouseGrid2DPos();
-                var gridPos = grid2dPos.ToVector2I() / Constants.PillSize;
-                DraggingNode = PillNodesTable[gridPos];
-                dragStartPosition = grid2dPos; //DraggingNode.Position;
-                Input.SetDefaultCursorShape(Input.CursorShape.Drag);
-                GD.Print($"Start drag {gridPos}");
-                //LblDebug.Text = $"Start drag {gridPos}";
-                LblDebug.Text = Board.pills[gridPos].ToString();
-            }
-        }
-    }
-
 
     private async Task InputAsync(InputEvent @event)
     {
@@ -279,11 +162,39 @@ public partial class BoardNode : Node2D
             }
         }
     }
+    #endregion
 
-    public override void _Input(InputEvent @event)
+    #region Area2D collision shape inputs
+    private void PillNode_MouseEntered()
     {
-        _ = InputAsync(@event);
+        Input.SetDefaultCursorShape(Input.CursorShape.PointingHand);
     }
+
+    private void PillNode_MouseExited()
+    {
+        if (!IsDragging)
+            Input.SetDefaultCursorShape(Input.CursorShape.Arrow);
+    }
+
+    private void PillNode_InputEvent(Node viewport, InputEvent @event, long shapeIdx)
+    {
+        if (@event is InputEventMouseButton mouseClickEvent && mouseClickEvent.ButtonIndex == MouseButton.Left)
+        {
+            // On drag start
+            if (mouseClickEvent.Pressed && !IsDragging)
+            {
+                var grid2dPos = GetMouseGrid2DPos();
+                var gridPos = grid2dPos.ToVector2I() / Constants.PillSize;
+                DraggingNode = PillNodesTable[gridPos];
+                dragStartPosition = grid2dPos; //DraggingNode.Position;
+                Input.SetDefaultCursorShape(Input.CursorShape.Drag);
+                GD.Print($"Start drag {gridPos}");
+                //LblDebug.Text = $"Start drag {gridPos}";
+                LblDebug.Text = Board.pills[gridPos].ToString();
+            }
+        }
+    }
+    #endregion
 
     private Vector2 GetCurrentMotionPosition()
     {

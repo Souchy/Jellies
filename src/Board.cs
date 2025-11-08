@@ -90,14 +90,17 @@ public class Board
 
         await ProcessDestruction(events);
 
-        return true;
+        return events.Count > 0;
     }
 
 
     private async Task ProcessDestruction(List<IPillEvent> events)
     {
-        var tasks = events.Select(ev => EventBus.PublishAsync(ev));
-        await Task.WhenAll(tasks);
+        if(events.Count == 0)
+            return;
+
+        // Send events to UI (destruction)
+        await SendEvents(events);
 
         for (int i = 0; i < events.Count; i++)
         {
@@ -111,8 +114,7 @@ public class Board
                     List<IPillEvent> newEvents = [];
                     // Check if destroying this pill creates more events
                     pill.OnDestroy(this, pos, ref newEvents);
-                    // Check if destroying this pill generates reactions on adjacents cells
-                    // TODO
+                    // TODO Check if destroying this pill generates reactions on adjacents cells
                     await ProcessDestruction(newEvents);
                 }
             }
@@ -123,9 +125,33 @@ public class Board
                 foreach (var pos in pde.Positions)
                     pills[pos] = new EmptyPill();
 
-        // TODO: Apply gravity
+        // Apply gravity
+        var gravityEvents = ApplyGravity();
+        await SendEvents(gravityEvents);
+
+        // Create new pills
+        List<IPillEvent> createEvents = [];
+        BoardGenerator.GenerateFillEmptyCells(this, ref createEvents);
+        await SendEvents(createEvents);
+
+        // TODO: Check for new matches from gravity and creation
+
+        // Match again
+        //List<Pattern> newMatchedPatterns = [];
+        //foreach (var ge in gravityEvents)
+        //{
+        //    CheckMatchesOnSwap(ref newMatchedPatterns, ge.ToPosition);
+        //}
+
+        //// Loop until no new matches
+        //await ProcessMatches(newMatchedPatterns);
     }
 
+    public async Task SendEvents<T>(IEnumerable<T> events) where T : IPillEvent
+    {
+        var tasks = events.Select(ev => EventBus.PublishAsync(ev));
+        await Task.WhenAll(tasks);
+    }
     
     private async Task ProcessMatches(List<Pattern> patterns)
     {

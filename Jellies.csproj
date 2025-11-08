@@ -8,10 +8,11 @@
   <ItemGroup>
     <Compile Remove="src\pills\PillEffect.cs" />
     <Compile Remove="src\pills\PillType.cs" />
+    <Compile Remove="src\util\TaskDictionary.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="GodotSharpExtras" Version="0.5.0" />
     <PackageReference Include="Souchy.Godot" Version="1.0.2" />
-    <PackageReference Include="Souchy.Net" Version="1.0.13" />
+    <PackageReference Include="Souchy.Net" Version="1.0.14" />
   </ItemGroup>
 </Project>
