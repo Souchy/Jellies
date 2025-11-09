@@ -73,15 +73,9 @@ public class Board
             pills[req.newPos].OnSwap(this, req.newPos, pills[req.oldPos], ref events);
             // TODO: Process swap events
             // TODO: wait animations happening after swap
-            //var tasks = events.Select(OnPillEvent);
-            //await Task.WhenAll(tasks);
-            //await ProcessMatches(matchedPatterns);
 
-            foreach (var p in matchedPatterns)
-            {
-                var destroyEvent = new PillDestroyEvent([.. p.Cells]);
-                await ProcessDestruction([destroyEvent]);
-            }
+            var destroyevents = matchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells));
+            await ProcessDestruction(destroyevents.ToList());
         }
 
         return matched1 || matched2;
@@ -109,9 +103,10 @@ public class Board
             if (de.Positions.Length == 1)
                 return;
 
-        // Send events to UI (destruction)
+        // Send animation events to UI (destruction)
         await SendEvents(events);
 
+        // Chain reactions
         for (int i = 0; i < events.Count; i++)
         {
             var ev = events[i];
@@ -130,11 +125,17 @@ public class Board
             }
         }
 
-        // TODO: Send event to set empty pills + queuefree on the UI side.
+        // Set empty pills
         foreach (var ev in events)
             if (ev is PillDestroyEvent pde)
+            {
                 foreach (var pos in pde.Positions)
                     pills[pos] = new EmptyPill();
+
+                // Send event to set empty pills + queuefree on the UI side.
+                var deleteEvent = new PillDeleteEvent(pde.Positions);
+                await EventBus.PublishAsync(deleteEvent);
+            }
 
         // Apply gravity
         var gravityEvents = ApplyGravity();

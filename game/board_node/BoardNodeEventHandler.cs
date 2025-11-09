@@ -31,6 +31,18 @@ public partial class BoardNode
         this.CallDeferred(nameof(OnDestroyDeffered), wrapper);
         await wrapper.Tcs.Task;
     }
+    private void OnDelete(PillDeleteEvent ev)
+    {
+        // Remove nodes from tree & table
+        foreach (var pos in ev.Positions)
+        {
+            var pillNode = PillNodesTable[pos];
+            if (pillNode == null)
+                continue;
+            pillNode.QueueFree();
+            PillNodesTable[pos] = null;
+        }
+    }
     #endregion
 
     #region Deffered Event Handlers
@@ -51,15 +63,6 @@ public partial class BoardNode
             tweenTasks.Add(wrapper());
         }
         await Task.WhenAll(tweenTasks);
-        // Remove nodes from tree & table (FIXME: doesnt work with chain reactions. Collect all destruction events, then send a mini event to set empty pills)
-        foreach (var pos in ev.Event.Positions)
-        {
-            var pillNode = PillNodesTable[pos];
-            if (pillNode == null)
-                continue;
-            pillNode.QueueFree();
-            PillNodesTable[pos] = null;
-        }
         ev.Tcs.SetResult();
     }
     private async void OnCreateDeffered(DefferedEvent<PillCreateEvent> ev)

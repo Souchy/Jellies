@@ -53,7 +53,7 @@ public partial class BoardNode : Node2D
         //Board?.OnPillEvent -= OnPillEvent;
         Board = BoardGenerator.Generate(difficulty: 1, ref creationEvents);
         //Board.OnPillEvent += OnPillEvent;
-        Board.EventBus.Subscribe(OnDestruction, OnCreation, OnGravity);
+        Board.EventBus.Subscribe(OnDestruction, OnCreation, OnGravity, OnDelete);
 
         PillNodesTable = new(Board.pills.Width, Board.pills.Height, null);
         Pills.RemoveAndQueueFreeChildren();

@@ -203,5 +203,6 @@ public record struct VerticalPill : Pill
 public interface IPillEvent;
 //public record struct PillSwapEvent(Vector2I PositionA, Vector2I PositionB) : IPillEvent;
 public record struct PillDestroyEvent(params Vector2I[] Positions) : IPillEvent;
+public record struct PillDeleteEvent(params Vector2I[] Positions) : IPillEvent;
 public record struct PillGravityEvent(Vector2I FromPosition, Vector2I ToPosition) : IPillEvent;
 public record struct PillCreateEvent(Vector2I SpawnPosition, Vector2I RealPosition) : IPillEvent;

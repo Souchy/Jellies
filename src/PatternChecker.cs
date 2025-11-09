@@ -70,17 +70,18 @@ public static class PatternChecker
         return false;
     }
 
-    public static bool CheckAllSquares(Board board, Pill pill, Vector2I newPos, out HashSet<Vector2I> matchedPositions)
+    public static bool CheckAllSquares(Board board, Pill pill, Vector2I headPos, out HashSet<Vector2I> matchedPositions)
     {
         matchedPositions = [];
         //Pill currentPill = board.pills[position];
         foreach (var square in Squares)
         {
-            var squareInGrid = square.Select(offset => newPos + offset);
+            var squareInGrid = square.Select(offset => headPos + offset);
             if (squareInGrid.All(pos => board.pills.Is(pos, pill)))
             {
                 foreach (var pos in squareInGrid)
                     matchedPositions.Add(pos);
+                matchedPositions.Add(headPos);
                 return true;
             }
         }
