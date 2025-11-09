@@ -73,7 +73,6 @@ public class Board
             pills[req.newPos].OnSwap(this, req.newPos, pills[req.oldPos], ref events);
             // TODO: Process swap events
             // TODO: wait animations happening after swap
-
             var destroyevents = matchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells));
             await ProcessDestruction(destroyevents.ToList());
         }
@@ -146,17 +145,20 @@ public class Board
         BoardGenerator.GenerateFillEmptyCells(this, ref createEvents);
         await SendEvents(createEvents);
 
-        // TODO: Check for new matches from gravity and creation
+        // Collect cells that moved
+        var creationGravity = createEvents.Where(e => e is PillGravityEvent a).Cast<PillGravityEvent>();
+        var movedCells = gravityEvents.Concat(creationGravity);
 
-        // Match again
-        //List<Pattern> newMatchedPatterns = [];
-        //foreach (var ge in gravityEvents)
-        //{
-        //    CheckMatchesOnSwap(ref newMatchedPatterns, ge.ToPosition);
-        //}
+        // Check matches again on the moved cells
+        List<Pattern> newMatchedPatterns = [];
+        foreach (var ge in movedCells)
+        {
+            CheckMatchesOnSwap(ref newMatchedPatterns, ge.ToPosition);
+        }
 
-        //// Loop until no new matches
-        //await ProcessMatches(newMatchedPatterns);
+        // Loop until no new matches
+        var destroyevents = newMatchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells));
+        await ProcessDestruction([.. destroyevents]);
     }
 
     public async Task SendEvents<T>(IEnumerable<T> events) where T : IPillEvent
