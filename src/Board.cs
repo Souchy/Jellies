@@ -73,9 +73,15 @@ public class Board
             pills[req.newPos].OnSwap(this, req.newPos, pills[req.oldPos], ref events);
             // TODO: Process swap events
             // TODO: wait animations happening after swap
-            var tasks = events.Select(OnPillEvent);
-            await Task.WhenAll(tasks);
-            await ProcessMatches(matchedPatterns);
+            //var tasks = events.Select(OnPillEvent);
+            //await Task.WhenAll(tasks);
+            //await ProcessMatches(matchedPatterns);
+
+            foreach (var p in matchedPatterns)
+            {
+                var destroyEvent = new PillDestroyEvent([.. p.Cells]);
+                await ProcessDestruction([destroyEvent]);
+            }
         }
 
         return matched1 || matched2;
@@ -96,8 +102,12 @@ public class Board
 
     private async Task ProcessDestruction(List<IPillEvent> events)
     {
-        if(events.Count == 0)
+        if (events.Count == 0)
             return;
+        // TODO: optimization - if only one pill destroyed, no chain reaction possible
+        if (events.Count == 1 && events[0] is PillDestroyEvent de)
+            if (de.Positions.Length == 1)
+                return;
 
         // Send events to UI (destruction)
         await SendEvents(events);
@@ -120,6 +130,7 @@ public class Board
             }
         }
 
+        // TODO: Send event to set empty pills + queuefree on the UI side.
         foreach (var ev in events)
             if (ev is PillDestroyEvent pde)
                 foreach (var pos in pde.Positions)
@@ -152,7 +163,7 @@ public class Board
         var tasks = events.Select(ev => EventBus.PublishAsync(ev));
         await Task.WhenAll(tasks);
     }
-    
+
     private async Task ProcessMatches(List<Pattern> patterns)
     {
         if (patterns.Count == 0)
@@ -204,7 +215,7 @@ public class Board
         // Loop until no new matches
         await ProcessMatches(newMatchedPatterns);
     }
-    
+
 
     private List<PillGravityEvent> ApplyGravity()
     {
@@ -227,6 +238,7 @@ public class Board
                     pills[x, y] = new EmptyPill();
                     gravityEvents.Add(new PillGravityEvent(new Vector2I(x, y), new Vector2I(x, y + emptySpaces)));
                     y += emptySpaces; // Go back to check for more empty spaces
+                    emptySpaces = 0;
                 }
             }
         }

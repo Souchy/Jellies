@@ -13,42 +13,46 @@ namespace Jellies.game.board_node;
 public partial class BoardNode
 {
     #region Async Event Handlers
-    private async Task OnGravity(PillGravityEvent ev)
-    {
-        var wrapper = new DefferedEvent<PillGravityEvent>(ev);
-        this.CallDeferred(nameof(OnGravityDeffered), wrapper);
-        await wrapper.Tcs.Task;
-    }
     private async Task OnCreation(PillCreateEvent ev)
     {
         var wrapper = new DefferedEvent<PillCreateEvent>(ev);
         this.CallDeferred(nameof(OnCreateDeffered), wrapper);
         await wrapper.Tcs.Task;
     }
-
+    private async Task OnGravity(PillGravityEvent ev)
+    {
+        var wrapper = new DefferedEvent<PillGravityEvent>(ev);
+        this.CallDeferred(nameof(OnGravityDeffered), wrapper);
+        await wrapper.Tcs.Task;
+    }
     private async Task OnDestruction(PillDestroyEvent ev)
     {
-        // TODO: PillDestroyEvent
-        //var headNode = PillNodesTable[ev.Positions[0]];
-        //if (pillNode == null)
-        //{
-        //    // FIXME: Shouldn't destroy the same node twice?
-        //    return;
-        //}
-        // Animation + remove node
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        // Destroy node
-        //var anim = pillNode.GetNode<AnimationPlayer>("AnimationPlayer");
-        //anim.Play("destroy");
-        //anim.AnimationFinished += name =>
-        //{
-        //    pillNode.QueueFree();
-        //    PillNodesTable[destroyEvent.Position] = null;
-        //    tcs.SetResult(true);
-        //};
+        var wrapper = new DefferedEvent<PillDestroyEvent>(ev);
+        this.CallDeferred(nameof(OnDestroyDeffered), wrapper);
+        await wrapper.Tcs.Task;
+    }
+    #endregion
 
-        // Empty nodes (FIXME: doesnt work with chain reactions)
-        foreach (var pos in ev.Positions)
+    #region Deffered Event Handlers
+    private async void OnDestroyDeffered(DefferedEvent<PillDestroyEvent> ev)
+    {
+        List<Task> tweenTasks = [];
+        foreach (var pos in ev.Event.Positions)
+        {
+            var pill = Board.pills[pos]; // data
+            var pillNode = PillNodesTable[pos]; // node
+            if (pillNode == null)
+                continue;
+            var tween = this.CreateTween();
+            tween.TweenProperty(pillNode, Node2D.PropertyName.Scale.ToString(), Vector2.Zero, 1f);
+
+            var signalAwaiter = ToSignal(tween, Tween.SignalName.Finished);
+            async Task<Variant[]> wrapper() => await signalAwaiter;
+            tweenTasks.Add(wrapper());
+        }
+        await Task.WhenAll(tweenTasks);
+        // Remove nodes from tree & table (FIXME: doesnt work with chain reactions. Collect all destruction events, then send a mini event to set empty pills)
+        foreach (var pos in ev.Event.Positions)
         {
             var pillNode = PillNodesTable[pos];
             if (pillNode == null)
@@ -56,37 +60,8 @@ public partial class BoardNode
             pillNode.QueueFree();
             PillNodesTable[pos] = null;
         }
-
-        tcs.SetResult(true);
-        await tcs.Task;
-    }
-    #endregion
-
-    #region Deffered Event Handlers
-    private async void OnGravityDeffered(DefferedEvent<PillGravityEvent> ev)
-    {
-        // Move pill in the table if it's a valid 'from' position (ex: on inputswap, when a match happens below this pill)
-        if (PillNodesTable.Has(ev.Event.FromPosition))
-        {
-            PillNodesTable[ev.Event.ToPosition] = PillNodesTable[ev.Event.FromPosition];
-        }
-        // Get the node, it's already in the right slot in the table. (ex: on game start, pillnodes start outside the board range)
-        var pillNode = PillNodesTable[ev.Event.ToPosition];
-
-        // Animation position
-        var deltaPos = ev.Event.ToPosition - ev.Event.FromPosition;
-        var animationTime = deltaPos.Y * 0.07f;
-        var tween = GetTree().CreateTween();
-        tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(), ev.Event.ToPosition.ToVector2() * Constants.PillSize, animationTime)
-            .SetTrans(Tween.TransitionType.Bounce)
-            .SetEase(Tween.EaseType.Out);
-
-        // Await tween finish and set task complete
-        await ToSignal(tween, Tween.SignalName.Finished);
-        pillNode.Position = ev.Event.ToPosition.ToVector2() * Constants.PillSize; // Make sure the position is perfect?
         ev.Tcs.SetResult();
     }
-
     private async void OnCreateDeffered(DefferedEvent<PillCreateEvent> ev)
     {
         var pill = Board.pills[ev.Event.RealPosition];
@@ -117,6 +92,29 @@ public partial class BoardNode
 
         // Await tween finish and set task complete
         await ToSignal(tween, Tween.SignalName.Finished);
+        ev.Tcs.SetResult();
+    }
+    private async void OnGravityDeffered(DefferedEvent<PillGravityEvent> ev)
+    {
+        // Move pill in the table if it's a valid 'from' position (ex: on inputswap, when a match happens below this pill)
+        if (PillNodesTable.Has(ev.Event.FromPosition))
+        {
+            PillNodesTable[ev.Event.ToPosition] = PillNodesTable[ev.Event.FromPosition];
+        }
+        // Get the node, it's already in the right slot in the table. (ex: on game start, pillnodes start outside the board range)
+        var pillNode = PillNodesTable[ev.Event.ToPosition];
+
+        // Animation position
+        var deltaPos = ev.Event.ToPosition - ev.Event.FromPosition;
+        var animationTime = deltaPos.Y * 0.07f;
+        var tween = GetTree().CreateTween();
+        tween.TweenProperty(pillNode, Node2D.PropertyName.Position.ToString(), ev.Event.ToPosition.ToVector2() * Constants.PillSize, animationTime)
+            .SetTrans(Tween.TransitionType.Bounce)
+            .SetEase(Tween.EaseType.Out);
+
+        // Await tween finish and set task complete
+        await ToSignal(tween, Tween.SignalName.Finished);
+        pillNode.Position = ev.Event.ToPosition.ToVector2() * Constants.PillSize; // Make sure the position is perfect?
         ev.Tcs.SetResult();
     }
     #endregion

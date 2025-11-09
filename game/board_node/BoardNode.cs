@@ -3,7 +3,6 @@ using Godot.Sharp.Extras;
 using Jellies.game.pill_node;
 using Jellies.src;
 using Jellies.src.pills;
-using Jellies.src.util;
 using Souchy.Godot.structures;
 using System;
 using System.Collections.Concurrent;
@@ -101,6 +100,8 @@ public partial class BoardNode : Node2D
                 GD.Print($"Stop drag {lastBoardPos} from {dragStartBoardPos}");
                 //LblDebug.Text = $"Stop drag {lastBoardPos} from {dragStartBoardPos}";
 
+                // Stop dragging
+                DraggingNode = null;
                 if (wasSwapped)
                 {
                     LblDebug.Text += $"\nWas Swapped";
@@ -110,7 +111,10 @@ public partial class BoardNode : Node2D
 
                     // Check if there's a match and swap the pills in the data board
                     //bool matched = Board.InputSwap(dragStartBoardPos, lastBoardPos);
+
+                    Area2D.InputPickable = false;
                     bool matched = await Board.RequestBus.RequestAsync(new InputSwapRequest(dragStartBoardPos, lastBoardPos));
+                    Area2D.InputPickable = true;
 
                     // if no match, reset both this node and the swapped node positions
                     if (!matched)
@@ -122,8 +126,6 @@ public partial class BoardNode : Node2D
                     }
                     LblDebug.Text += $"\nMatched = {matched}";
                 }
-                // Stop dragging
-                DraggingNode = null;
             }
         }
         else
