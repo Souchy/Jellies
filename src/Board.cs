@@ -74,7 +74,7 @@ public class Board
             // TODO: Process swap events
             // TODO: wait animations happening after swap
             var destroyevents = matchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells));
-            await ProcessDestruction(destroyevents.ToList());
+            await ProcessDestruction(destroyevents.ToList(), []);
         }
 
         return matched1 || matched2;
@@ -87,13 +87,13 @@ public class Board
         List<IPillEvent> events = [];
         clickedPill.OnClick(this, req.pos, ref events);
 
-        await ProcessDestruction(events);
+        await ProcessDestruction(events, []);
 
         return events.Count > 0;
     }
 
 
-    private async Task ProcessDestruction(List<IPillEvent> events)
+    private async Task ProcessDestruction(List<IPillEvent> events, List<Vector2I> destroyed)
     {
         if (events.Count == 0)
             return;
@@ -102,6 +102,7 @@ public class Board
             if (de.Positions.Length == 1)
                 return;
 
+        bool isFirstCall = destroyed.Count == 0;
         // Send animation events to UI (destruction)
         await SendEvents(events);
 
@@ -115,11 +116,20 @@ public class Board
                 {
                     var pos = pde.Positions[j];
                     var pill = pills[pos];
+                    // If already destroyed in this chain reaction, skip
+                    if (destroyed.Contains(pos))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        destroyed.Add(pos);
+                    }
                     List<IPillEvent> newEvents = [];
                     // Check if destroying this pill creates more events
                     pill.OnDestroy(this, pos, ref newEvents);
                     // TODO Check if destroying this pill generates reactions on adjacents cells
-                    await ProcessDestruction(newEvents);
+                    await ProcessDestruction(newEvents, destroyed);
                 }
             }
         }
@@ -133,8 +143,12 @@ public class Board
 
                 // Send event to set empty pills + queuefree on the UI side.
                 var deleteEvent = new PillDeleteEvent(pde.Positions);
-                await EventBus.PublishAsync(deleteEvent);
+                EventBus.Publish(deleteEvent); // Delete event is not async
             }
+
+        // FIXME: Bug with chain reactions
+        //if(!isFirstCall)
+        //    return;
 
         // Apply gravity
         var gravityEvents = ApplyGravity();
@@ -158,7 +172,7 @@ public class Board
 
         // Loop until no new matches
         var destroyevents = newMatchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells));
-        await ProcessDestruction([.. destroyevents]);
+        await ProcessDestruction([.. destroyevents], []);
     }
 
     public async Task SendEvents<T>(IEnumerable<T> events) where T : IPillEvent
