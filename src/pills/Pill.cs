@@ -105,6 +105,7 @@ public record struct DynamitePill : Pill
                 }
             }
         }
+        Array.Resize(ref positions, index);
         events.Add(new PillDestroyEvent(positions));
     }
 }
@@ -138,6 +139,7 @@ public record struct BombPill : Pill
                 }
             }
         }
+        Array.Resize(ref positions, index);
         events.Add(new PillDestroyEvent(positions));
     }
 }
@@ -167,6 +169,7 @@ public record struct HorizontalPill : Pill
                 positions[index++] = targetPos;
             }
         }
+        Array.Resize(ref positions, index);
         events.Add(new PillDestroyEvent(positions));
     }
 }
@@ -196,6 +199,7 @@ public record struct VerticalPill : Pill
                 positions[index++] = targetPos;
             }
         }
+        Array.Resize(ref positions, index);
         events.Add(new PillDestroyEvent(positions));
     }
 }
