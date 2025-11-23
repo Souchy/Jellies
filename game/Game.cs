@@ -14,17 +14,25 @@ public partial class Game : Control //Node2D
     [NodePath] public Button BtnPlay { get; set; }
     #endregion
 
+    Task PlayTask;
+
     public override void _Ready()
     {
         this.OnReady();
         BtnPlay.Pressed += OnPlayBtnPressed;
+
     }
 
     private async void OnPlayBtnPressed()
     {
+        if(PlayTask != null)
+        {
+            // TODO: Cancel task with CancellationToken
+        }
         GD.Print("Play button pressed");
         // Start game task and disable input during the process (animations)
-        await BoardNode.StartGame();
+        PlayTask = BoardNode.StartGame();
+        await PlayTask;
     }
 
 }
