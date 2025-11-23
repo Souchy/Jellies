@@ -12,22 +12,17 @@ namespace Jellies.game.board_node;
 public partial class BoardNode
 {
     private PillNode? DraggingNode { get; set; }
-    private bool IsDragging => DraggingNode != null;
+    private bool IsDragging = false; // => DraggingNode != null;
 
     // Position where we started dragging
     private Vector2 DragStartPosition;
     private Vector2I DragStartBoardPos => DragStartPosition.ToVector2I() / Constants.PillSize;
-
-    // Last position of the dragged node
-    //private Vector2 LastPos => DraggingNode?.Position ?? Vector2.Zero;
-    //private Vector2I LastBoardPos => LastPos.ToVector2I() / Constants.PillSize;
 
     //// New position of the dragged node
     private Vector2 NewPos => GetCurrentMotionPosition();
     private Vector2I NewBoardPos => NewPos.ToVector2I() / Constants.PillSize;
 
     private bool IsSwapped => NewPos != DragStartPosition;
-    //private bool WasSwapped => LastPos != DragStartPosition;
 
     #region Global Inputs
     // Fire and forget input task
@@ -42,10 +37,8 @@ public partial class BoardNode
 
     private async void InputAsync(InputEvent @event)
     {
-        if(Board == null)
+        if (Board == null)
             return;
-        //Vector2I startBoardPos = DragStartPosition.ToVector2I() / Constants.PillSize;
-
 
         var NewPos = GetCurrentMotionPosition();
         var NewBoardPos = NewPos.ToVector2I() / Constants.PillSize;
@@ -66,6 +59,7 @@ public partial class BoardNode
                 LblDebug.Text = $"Stop drag {DragStartBoardPos} to {LastBoardPos}";
 
                 // Stop dragging
+                IsDragging = false;
                 EnableInput(false);
                 if (WasSwapped)
                 {
@@ -97,9 +91,12 @@ public partial class BoardNode
         if (@event is InputEventMouseMotion mouseMotionEvent && Input.IsMouseButtonPressed(MouseButton.Left))
         {
             // Start dragging if not already
+            if (DraggingNode == null)
+                return;
             if (!IsDragging)
             {
-                DraggingNode = PillNodesTable[DragStartBoardPos];
+                //DraggingNode = PillNodesTable[DragStartBoardPos];
+                IsDragging = true;
                 Input.SetDefaultCursorShape(Input.CursorShape.Drag);
             }
             Vector2 LastPos = DraggingNode.Position;
@@ -158,24 +155,22 @@ public partial class BoardNode
         {
             var clickPos = GetMouseGrid2DPos();
             var clickBoardPos = clickPos.ToVector2I() / Constants.PillSize;
-
+            IsDragging = false;
             // On click
-            if (mouseClickEvent.Pressed && !IsDragging)
+            if (mouseClickEvent.Pressed)
             {
-                //var clickBoardPos = clickPos.ToVector2I() / Constants.PillSize;
-                //DraggingNode = PillNodesTable[gridPos];
-                DragStartPosition = clickPos; //DraggingNode.Position;
+                DraggingNode = PillNodesTable[clickBoardPos];
+                DragStartPosition = clickPos;
                 //Input.SetDefaultCursorShape(Input.CursorShape.Drag);
-                //GD.Print($"Start drag {gridPos}");
                 LblDebug.Text = $"Press {clickBoardPos} {Board.pills[clickBoardPos]}";
-                //LblDebug.Text = Board.pills[gridPos].ToString();
             }
             else
             // On release click
-            if (!mouseClickEvent.Pressed && !IsDragging)
+            if (!mouseClickEvent.Pressed && DraggingNode != null)
             {
                 LblDebug.Text = $"Click!: {clickBoardPos} {Board.pills[clickBoardPos]}";
                 EnableInput(false);
+                DraggingNode = null;
                 bool ok = await Board.RequestBus.RequestAsync(new InputClickRequest(clickBoardPos));
                 EnableInput(true);
             }

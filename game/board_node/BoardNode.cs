@@ -44,6 +44,7 @@ public partial class BoardNode : Node2D
         // Clear data, nodes and shapes
         List<IPillEvent> creationEvents = [];
         DraggingNode = null;
+        IsDragging = false;
         //Board?.OnPillEvent -= OnPillEvent;
         Board = BoardGenerator.Generate(difficulty: 1, ref creationEvents);
         //Board.OnPillEvent += OnPillEvent;
