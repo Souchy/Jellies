@@ -37,6 +37,26 @@
 8. Repeat
 
 
+
+------------------------------------------------------ Chain reaction
+- 
+3. Destroy pills in the matches
+4. Delete pills in the matches
+5. Apply gravity
+6. Generate new pills
+
+7. Check matches
+8. Repeat
+
+
+
+
+
+
+
+
+
+
 ------------------------------------------------------ Swap Combo (ex: bomb + dynamite)
 1. Swap 2 pills
 2. Check matches
