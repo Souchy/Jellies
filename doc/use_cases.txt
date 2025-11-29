@@ -1,0 +1,69 @@
+
+
+
+
+- PillUpgradeEvent
+	- Animate old pill to disappear (scale to 0)
+	- Create new pill sprite (node)
+	- Animate new pill to appear
+
+
+
+------------------------------------------------------ Swap Base
+1. Swap 2 pills
+2. Check matches
+3. For each pattern, 
+	a. create PillDestroyEvent() with all positions matched
+3. Destroy pills in the matches
+4. Delete pills in the matches
+5. Apply gravity
+6. Generate new pills
+
+7. Check matches
+8. Repeat
+
+
+------------------------------------------------------ Swap that creates a special pill
+1. Swap 2 pills
+2. Check matches
+
+3. 
+3. Destroy pills in the matches
+4. Delete pills in the matches
+5. Apply gravity
+6. Generate new pills
+
+7. Check matches
+8. Repeat
+
+
+------------------------------------------------------ Swap Combo (ex: bomb + dynamite)
+1. Swap 2 pills
+2. Check matches
+3. Destroy pills in the matches
+4. Delete pills in the matches
+5. Apply gravity
+6. Generate new pills
+7. Check matches
+8. Repeat
+
+------------------------------------------------------ Swap Combo special pill + regular pill that matches
+1. Swap 2 pills
+2. Check matches
+3. Destroy pills in the matches
+4. Delete pills in the matches
+5. Apply gravity
+6. Generate new pills
+7. Check matches
+8. Repeat
+
+
+
+------------------------------------------------------ Click
+1. Click 1 pill
+2. pill.OnClick    (depends on implementation)
+	a. pill.OnDestroy() 
+		returns destroyEvent with list of positions
+3. process destroy events
+
+

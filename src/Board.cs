@@ -69,12 +69,21 @@ public class Board
         else
         {
             var events = new List<IPillEvent>();
+
+            // TODO: Combo events? (ex: swap disco + dynamite = spawn dynamites everywhere)
             pills[req.oldPos].OnSwap(this, req.oldPos, pills[req.newPos], ref events);
             pills[req.newPos].OnSwap(this, req.newPos, pills[req.oldPos], ref events);
-            // TODO: Process swap events
-            // TODO: wait animations happening after swap
-            var destroyevents = matchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells));
-            await ProcessDestruction(destroyevents.ToList(), []);
+            // Process events here before continuing actually.
+
+            // TODO: Upgrade events? (ex: line4 = dynamite horizontal/vertical)
+            // ..
+
+            // Destroy cells in matched patterns
+            var destroyevents = matchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells)).ToList();
+            events.AddRange(destroyevents);
+
+            // Process Destruction + Upgrades
+            await ProcessDestruction(events);
         }
 
         return matched1 || matched2;
@@ -87,68 +96,71 @@ public class Board
         List<IPillEvent> events = [];
         clickedPill.OnClick(this, req.pos, ref events);
 
-        await ProcessDestruction(events, []);
+        await ProcessDestruction(events);
 
         return events.Count > 0;
     }
 
 
-    private async Task ProcessDestruction(List<IPillEvent> events, List<Vector2I> destroyed)
+    private async Task ChainDestroyPills(List<IPillEvent> events, HashSet<Vector2I> destroyed)
     {
-        if (events.Count == 0)
-            return;
-        // TODO: optimization - if only one pill destroyed, no chain reaction possible
-        if (events.Count == 1 && events[0] is PillDestroyEvent de)
-            if (de.Positions.Length == 1)
-                return;
-
-        bool isFirstCall = destroyed.Count == 0;
-        // Send animation events to UI (destruction)
-        await SendEvents(events);
-
         // Chain reactions
         for (int i = 0; i < events.Count; i++)
         {
             var ev = events[i];
             if (ev is PillDestroyEvent pde)
             {
-                for (int j = 1; j < pde.Positions.Length; j++)
+                for (int j = 0; j < pde.Positions.Length; j++)
                 {
                     var pos = pde.Positions[j];
                     var pill = pills[pos];
+                    // Add pill to destroyed list.
                     // If already destroyed in this chain reaction, skip
-                    if (destroyed.Contains(pos))
+                    if (!destroyed.Add(pos))
+                        continue;
+                    // Regular pills dont cause other explosions
+                    if (pill is RegularPill)
                     {
                         continue;
                     }
-                    else
-                    {
-                        destroyed.Add(pos);
-                    }
+
                     List<IPillEvent> newEvents = [];
                     // Check if destroying this pill creates more events
                     pill.OnDestroy(this, pos, ref newEvents);
-                    // TODO Check if destroying this pill generates reactions on adjacents cells
-                    await ProcessDestruction(newEvents, destroyed);
+                    if (newEvents.Count > 0)
+                    {
+                        // Animate those events
+                        await SendEvents(newEvents);
+                        // Chain react
+                        await ChainDestroyPills(newEvents, destroyed);
+                        // TODO Check if destroying this pill generates reactions on adjacents cells
+                    }
                 }
             }
         }
+    }
+
+    private async Task ProcessDestruction(List<IPillEvent> events)
+    {
+        if (events.Count == 0)
+            return;
+
+        // Send animation events to UI (destruction)
+        await SendEvents(events);
+
+        // Destroy pills
+        HashSet<Vector2I> destroyedPositions = [];
+        await ChainDestroyPills(events, destroyedPositions);
 
         // Set empty pills
-        foreach (var ev in events)
-            if (ev is PillDestroyEvent pde)
-            {
-                foreach (var pos in pde.Positions)
-                    pills[pos] = new EmptyPill();
+        foreach (var pos in destroyedPositions)
+        {
+            pills[pos] = new EmptyPill();
+        }
+        var deleteEvent = new PillDeleteEvent(destroyedPositions.ToArray());
+        EventBus.Publish(deleteEvent); // Delete event is not async
 
-                // Send event to set empty pills + queuefree on the UI side.
-                var deleteEvent = new PillDeleteEvent(pde.Positions);
-                EventBus.Publish(deleteEvent); // Delete event is not async
-            }
 
-        // FIXME: Bug with chain reactions
-        //if(!isFirstCall)
-        //    return;
 
         // Apply gravity
         var gravityEvents = ApplyGravity();
@@ -172,7 +184,8 @@ public class Board
 
         // Loop until no new matches
         var destroyevents = newMatchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells));
-        await ProcessDestruction([.. destroyevents], []);
+        if (destroyevents.Count() > 0)
+            await ProcessDestruction([.. destroyevents]);
     }
 
     public async Task SendEvents<T>(IEnumerable<T> events) where T : IPillEvent
