@@ -136,6 +136,53 @@ public class Board
         await ProcessEvents(events);
     }
 
+    private async Task ProcessEvents(List<IPillEvent> events)
+    {
+        if (events.Count == 0)
+            return;
+
+        // TODO: Do we process events 1 by 1 like this instead of batching them?
+        // That way we can process a PillDestroyEvent fully, then process a PillUpgradeEvent/PillSetEvent, etc. sequentially
+        foreach (var ev in events)
+        {
+            //// Send animation events to UI
+            //await SendEvents(events);
+
+            // Send 1 event at a time
+            await EventBus.PublishAsync(ev);
+
+            if (ev is PillDestroyEvent destroyEvent)
+            {
+                // Check for chain explosions
+                HashSet<Vector2I> destroyedPositions = [];
+                await ChainDestroyPills([destroyEvent], destroyedPositions);
+
+                // Set empty pills
+                foreach (var pos in destroyedPositions)
+                {
+                    pills[pos] = new EmptyPill();
+                }
+                var deleteEvent = new PillDeleteEvent([.. destroyedPositions]);
+                EventBus.Publish(deleteEvent); // Delete event is not async
+            }
+            // TODO?: Process Upgrade/SetPill events.
+            // Still, combo swaps sound hard because it's a whole animation that spawns bombs everywhere and explodes them etc.
+            //if(ev is PillUpgradeEvent pu)
+            //{
+            //}
+        }
+
+        // FIXME: 
+        // If we send destroy + upgrade in one go, then apply EmptyPill/Delete, then this deletes our new upgraded pills.
+        // We need to set the special pill in the table after deleting the old pills. 
+
+        await ApplyAftermath();
+    }
+
+    /// <summary>
+    /// Checks for chain explosions and destroys more pills if needed recursively.
+    /// TODO: 
+    /// </summary>
     private async Task ChainDestroyPills(List<IPillEvent> events, HashSet<Vector2I> destroyed)
     {
         // Chain reactions
@@ -173,48 +220,6 @@ public class Board
                 }
             }
         }
-    }
-
-    private async Task ProcessEvents(List<IPillEvent> events)
-    {
-        if (events.Count == 0)
-            return;
-
-        // TODO: Do we process events 1 by 1 like this instead of batching them?
-        foreach (var ev in events)
-        {
-            //// Send animation events to UI
-            //await SendEvents(events);
-
-            // Send 1 event at a time
-            await EventBus.PublishAsync(ev);
-
-            if (ev is PillDestroyEvent destroyEvent)
-            {
-                // Check for chain explosions
-                HashSet<Vector2I> destroyedPositions = [];
-                await ChainDestroyPills([destroyEvent], destroyedPositions);
-
-                // Set empty pills
-                foreach (var pos in destroyedPositions)
-                {
-                    pills[pos] = new EmptyPill();
-                }
-                var deleteEvent = new PillDeleteEvent([.. destroyedPositions]);
-                EventBus.Publish(deleteEvent); // Delete event is not async
-            }
-            // TODO?: Upgrade events. Still, combo swaps sound hard because it's  a whole animation that spawns things everywhere and explodes them etc.
-            //if(ev is PillUpgradeEvent pu)
-            //{
-
-            //}
-        }
-
-        // FIXME: 
-        // If we send destroy + upgrade in one go, then apply EmptyPill/Delete, then this deletes our new upgraded pills.
-        // We need to set the special pill in the table after deleting the old pills. 
-
-        await ApplyAftermath();
     }
 
     /// <summary>
