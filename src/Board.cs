@@ -25,7 +25,7 @@ public enum PatternType
     // Corner5
 }
 
-public record struct Pattern(PatternType Type, Vector2I[] Cells);
+public record struct Pattern(PatternType Type, Vector2I MovedCell, Vector2I[] Cells);
 
 public record InputSwapRequest(Vector2I oldPos, Vector2I newPos) : IRequest<bool>;
 public record InputClickRequest(Vector2I pos) : IRequest<bool>;
@@ -50,6 +50,23 @@ public class Board
     }
 
     /// <summary>
+    /// When clicking on a pill. If it's a special pill, it will create events and we process them.
+    /// </summary>
+    /// <param name="req"></param>
+    /// <param name="token"></param>
+    /// <returns></returns>
+    private async Task<bool> OnInputClick(InputClickRequest req, CancellationToken token)
+    {
+        Pill clickedPill = pills[req.pos];
+        List<IPillEvent> events = [];
+        clickedPill.OnClick(this, req.pos, ref events);
+
+        await ProcessEvents(events);
+
+        return events.Count > 0;
+    }
+
+    /// <summary>
     /// </summary>
     /// <param name="req">Request containing the Start and End pos of the swap</param>
     /// <returns></returns>
@@ -71,36 +88,53 @@ public class Board
             var events = new List<IPillEvent>();
 
             // TODO: Combo events? (ex: swap disco + dynamite = spawn dynamites everywhere)
-            pills[req.oldPos].OnSwap(this, req.oldPos, pills[req.newPos], ref events);
-            pills[req.newPos].OnSwap(this, req.newPos, pills[req.oldPos], ref events);
-            // Process events here before continuing actually.
+            pills[req.newPos].OnSwap(this, req.newPos, pills[req.oldPos], ref events); // Call the combo only on the new position?
+            //pills[req.oldPos].OnSwap(this, req.oldPos, pills[req.newPos], ref events);
+            // TODO: Process combo events here before continuing actually
+            // 1. Spawn dynamite everywhere + process animation (SendEvents)
+            // 2. Empty the event list to make place for the next step
+            // 3. For each newly spawned dynamite, call OnDestroy(ref events). This will fill the list with PillDestroyEvents. How do we know to call OnDestroy on those cells though? 
+            // 4. Continue to accumulate those events with the UpgradeEvents and other PillDestroyEvent from matches below
 
-            // TODO: Upgrade events? (ex: line4 = dynamite horizontal/vertical)
-            // ..
-
-            // Destroy cells in matched patterns
-            var destroyevents = matchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells)).ToList();
-            events.AddRange(destroyevents);
-
-            // Process Destruction + Upgrades
-            await ProcessDestruction(events);
+            // Process matches: create special pills from matches + destroy matched pills
+            await ProcessMatches(matchedPatterns);
         }
 
         return matched1 || matched2;
     }
 
-
-    private async Task<bool> OnInputClick(InputClickRequest req, CancellationToken token)
+    /// <summary>
+    /// Process matches: create special pills from matches + destroy matched pills, then process events
+    /// </summary>
+    private async Task ProcessMatches(List<Pattern> matchedPatterns)
     {
-        Pill clickedPill = pills[req.pos];
-        List<IPillEvent> events = [];
-        clickedPill.OnClick(this, req.pos, ref events);
+        var events = new List<IPillEvent>();
 
-        await ProcessDestruction(events);
+        foreach (var p in matchedPatterns)
+        {
+            // 1. Destroy cells in matched patterns
+            events.Add(new PillDestroyEvent(p.Cells));
 
-        return events.Count > 0;
+            // TODO: Upgrade events? (ex: line4 = dynamite horizontal/vertical)
+            // 2. Create special pills for big patterns
+            if (p.Cells.Length > 3)
+            {
+                if (p.Type == PatternType.Square)
+                {
+                    // TODO: Spawn a square pill! (helicopter/bomb)
+                }
+                if (p.Type == PatternType.Line)
+                {
+                    // TODO: Spawn something we dont know yet!
+                    // TODO: Use bitwise enum for [0 = square, 1 = linear] + other bits to differentiate vertical/horizontal, T and L shapes...
+                    // Make sure the types work with CheckMatchesOnSwap for combining patterns 
+                }
+            }
+        }
+
+        // Process Upgrades + Destruction
+        await ProcessEvents(events);
     }
-
 
     private async Task ChainDestroyPills(List<IPillEvent> events, HashSet<Vector2I> destroyed)
     {
@@ -134,34 +168,60 @@ public class Board
                         // Chain react
                         await ChainDestroyPills(newEvents, destroyed);
                         // TODO Check if destroying this pill generates reactions on adjacents cells
+                        // ..
                     }
                 }
             }
         }
     }
 
-    private async Task ProcessDestruction(List<IPillEvent> events)
+    private async Task ProcessEvents(List<IPillEvent> events)
     {
         if (events.Count == 0)
             return;
 
-        // Send animation events to UI (destruction)
-        await SendEvents(events);
-
-        // Destroy pills
-        HashSet<Vector2I> destroyedPositions = [];
-        await ChainDestroyPills(events, destroyedPositions);
-
-        // Set empty pills
-        foreach (var pos in destroyedPositions)
+        // TODO: Do we process events 1 by 1 like this instead of batching them?
+        foreach (var ev in events)
         {
-            pills[pos] = new EmptyPill();
+            //// Send animation events to UI
+            //await SendEvents(events);
+
+            // Send 1 event at a time
+            await EventBus.PublishAsync(ev);
+
+            if (ev is PillDestroyEvent destroyEvent)
+            {
+                // Check for chain explosions
+                HashSet<Vector2I> destroyedPositions = [];
+                await ChainDestroyPills([destroyEvent], destroyedPositions);
+
+                // Set empty pills
+                foreach (var pos in destroyedPositions)
+                {
+                    pills[pos] = new EmptyPill();
+                }
+                var deleteEvent = new PillDeleteEvent([.. destroyedPositions]);
+                EventBus.Publish(deleteEvent); // Delete event is not async
+            }
+            // TODO?: Upgrade events. Still, combo swaps sound hard because it's  a whole animation that spawns things everywhere and explodes them etc.
+            //if(ev is PillUpgradeEvent pu)
+            //{
+
+            //}
         }
-        var deleteEvent = new PillDeleteEvent(destroyedPositions.ToArray());
-        EventBus.Publish(deleteEvent); // Delete event is not async
 
+        // FIXME: 
+        // If we send destroy + upgrade in one go, then apply EmptyPill/Delete, then this deletes our new upgraded pills.
+        // We need to set the special pill in the table after deleting the old pills. 
 
+        await ApplyAftermath();
+    }
 
+    /// <summary>
+    /// Apply gravity, Create new pills, Check matches, Process matches...
+    /// </summary>
+    private async Task ApplyAftermath()
+    {
         // Apply gravity
         var gravityEvents = ApplyGravity();
         await SendEvents(gravityEvents);
@@ -171,7 +231,7 @@ public class Board
         BoardGenerator.GenerateFillEmptyCells(this, ref createEvents);
         await SendEvents(createEvents);
 
-        // Collect cells that moved
+        // Collect all cells that moved by gravity
         var creationGravity = createEvents.Where(e => e is PillGravityEvent a).Cast<PillGravityEvent>();
         var movedCells = gravityEvents.Concat(creationGravity);
 
@@ -181,11 +241,8 @@ public class Board
         {
             CheckMatchesOnSwap(ref newMatchedPatterns, ge.ToPosition);
         }
-
         // Loop until no new matches
-        var destroyevents = newMatchedPatterns.Select(p => (IPillEvent) new PillDestroyEvent(p.Cells));
-        if (destroyevents.Count() > 0)
-            await ProcessDestruction([.. destroyevents]);
+        await ProcessMatches(newMatchedPatterns);
     }
 
     public async Task SendEvents<T>(IEnumerable<T> events) where T : IPillEvent
@@ -193,59 +250,6 @@ public class Board
         var tasks = events.Select(ev => EventBus.PublishAsync(ev));
         await Task.WhenAll(tasks);
     }
-
-    private async Task ProcessMatches(List<Pattern> patterns)
-    {
-        if (patterns.Count == 0)
-            return;
-        // Apply destruction
-        List<IPillEvent> destroyEvents = [];
-        foreach (var pattern in patterns)
-        {
-            foreach (var cell in pattern.Cells)
-            {
-                pills[cell].OnDestroy(this, cell, ref destroyEvents);
-            }
-        }
-        // Remove duplicate events
-        destroyEvents = destroyEvents.Distinct().ToList();
-        // TODO: Process events
-        // TODO: wait animations for destruction etc
-        var destroytasks = destroyEvents.Select(OnPillEvent);
-        await Task.WhenAll(destroytasks);
-
-        // Clear board of destroyed pills
-        foreach (var ev in destroyEvents)
-            if (ev is PillDestroyEvent pde)
-                foreach (var pos in pde.Positions)
-                    pills[pos] = new EmptyPill();
-
-        // Apply gravity
-        List<PillGravityEvent> gravityEvents = ApplyGravity();
-        // TODO: Process gravity events
-        // TODO: wait gravity animation
-        var gravityTasks = gravityEvents.Select(ge => (IPillEvent) ge).Select(OnPillEvent);
-        await Task.WhenAll(gravityTasks);
-
-        // Create new pills
-        List<IPillEvent> createEvents = [];
-        BoardGenerator.GenerateFillEmptyCells(this, ref createEvents);
-        // TODO: Process create/gravity events
-        // TODO: wait create/gravity animation
-        var createTasks = createEvents.Select(OnPillEvent);
-        await Task.WhenAll(createTasks);
-
-        // Match again
-        List<Pattern> newMatchedPatterns = [];
-        foreach (var ge in gravityEvents)
-        {
-            CheckMatchesOnSwap(ref newMatchedPatterns, ge.ToPosition);
-        }
-
-        // Loop until no new matches
-        await ProcessMatches(newMatchedPatterns);
-    }
-
 
     private List<PillGravityEvent> ApplyGravity()
     {
@@ -299,7 +303,7 @@ public class Board
             // Add square only if no intersection with existing patterns
             if (!intersects)
             {
-                matchedPatterns.Add(new Pattern(PatternType.Square, squareMatches.ToArray()));
+                matchedPatterns.Add(new Pattern(PatternType.Square, newCell, squareMatches.ToArray()));
             }
         }
         else
@@ -310,21 +314,21 @@ public class Board
             if (intersects)
             {
                 var existingPattern = matchedPatterns[index];
-                // Upgrade square to line
+                // Upgrade square to line (take line instead of square if it has 4 or more cells)
                 if (existingPattern.Type == PatternType.Square && lineMatches.Count >= existingPattern.Cells.Length)
                 {
-                    matchedPatterns[index] = new Pattern(PatternType.Line, [.. lineMatches]);
+                    matchedPatterns[index] = new Pattern(PatternType.Line, newCell, [.. lineMatches]);
                 }
                 // Combine line with line
                 else
                 {
                     var combinedCells = existingPattern.Cells.Union(lineMatches).ToArray();
-                    matchedPatterns[index] = new Pattern(existingPattern.Type, combinedCells);
+                    matchedPatterns[index] = new Pattern(existingPattern.Type, newCell, combinedCells);
                 }
             }
             else
             {
-                matchedPatterns.Add(new Pattern(PatternType.Line, [.. lineMatches]));
+                matchedPatterns.Add(new Pattern(PatternType.Line, newCell, [.. lineMatches]));
             }
         }
 
