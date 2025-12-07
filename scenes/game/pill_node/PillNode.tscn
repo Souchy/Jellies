@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://cuf3oo40xv42d"]
 
-[ext_resource type="Script" uid="uid://cybhncia5tsgc" path="res://game/pill_node/PillNode.cs" id="1_3kpmo"]
+[ext_resource type="Script" uid="uid://cybhncia5tsgc" path="res://scenes/game/pill_node/PillNode.cs" id="1_3kpmo"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ffey8"]
 size = Vector2(64, 64)

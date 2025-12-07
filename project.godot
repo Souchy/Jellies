@@ -23,8 +23,7 @@ project/assembly_name="Jellies"
 
 folder_colors={
 "res://assets/": "green",
-"res://game/": "orange",
-"res://home/": "blue",
+"res://scenes/game/": "orange",
 "res://src/": "purple"
 }
 
