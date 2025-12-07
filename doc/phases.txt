@@ -27,12 +27,36 @@ BoardNode {
 5. List<PillDestroyEvent> events
 4. pills.OnSwap(events)
 	a. if special combo?
+		check use case below
+5. foreach matched pattern: 
+	create destroy events.
+6. Process events
+	a. destroy event (animation)
+	b. delete event (set empty/null)
+	b. check for special match
+		1. create special pill
+	c. gravity
+	d. fill empty cells
+	e. check new matches
+	f. go back to #5
+
+--------------------------------------------------------------- Input Swap(oldPos, newPos) + Combo
+1. swap pills in table
+2. swap nodes in table
+3. check swap + remember matching patterns
+	a. if no match: 
+		reset tables + return
+5. List<PillDestroyEvent> events
+
+4. pills.OnSwap(events)
+	a. if special combo?
 		ex:
 		a. random cells PillSetEvent(pos, new BombPill())
 		b. foreach random cell pill.OnDestroy(events)
 5. foreach matched pattern: 
 	a. cells.ondestroy(events)
 6. ProcessDestroyEvents(events)
+
 
 // What to do if we have events on swap + a match? ex: swap [dynamite, red pill] and it matches 3 red pills
 
