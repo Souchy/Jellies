@@ -122,12 +122,15 @@ public class Board
                 if (p.Type == PatternType.Square)
                 {
                     // TODO: Spawn a square pill! (helicopter/bomb)
+
                 }
                 if (p.Type == PatternType.Line)
                 {
                     // TODO: Spawn something we dont know yet!
                     // TODO: Use bitwise enum for [0 = square, 1 = linear] + other bits to differentiate vertical/horizontal, T and L shapes...
                     // Make sure the types work with CheckMatchesOnSwap for combining patterns 
+                    
+                    new PillUpgradeEvent(p.MovedCell, new DynamitePill()); // todo
                 }
             }
         }
@@ -140,6 +143,7 @@ public class Board
     {
         if (events.Count == 0)
             return;
+
 
         // TODO: Do we process events 1 by 1 like this instead of batching them?
         // That way we can process a PillDestroyEvent fully, then process a PillUpgradeEvent/PillSetEvent, etc. sequentially
@@ -167,9 +171,9 @@ public class Board
             }
             // TODO?: Process Upgrade/SetPill events.
             // Still, combo swaps sound hard because it's a whole animation that spawns bombs everywhere and explodes them etc.
-            //if(ev is PillUpgradeEvent pu)
-            //{
-            //}
+            if (ev is PillUpgradeEvent pu)
+            {
+            }
         }
 
         // FIXME: 
