@@ -69,7 +69,7 @@ public record struct RegularPill(RegularPillColor Color) : Pill
 
 public record struct DynamitePill : Pill
 {
-    private const int BlastRadius = 3;
+    private const int BlastRadius = 2;
     public Node2D CreateNode()
     {
         var sprite = new Sprite2D();
@@ -210,3 +210,4 @@ public record struct PillDestroyEvent(params Vector2I[] Positions) : IPillEvent;
 public record struct PillDeleteEvent(params Vector2I[] Positions) : IPillEvent;
 public record struct PillGravityEvent(Vector2I FromPosition, Vector2I ToPosition) : IPillEvent;
 public record struct PillCreateEvent(Vector2I SpawnPosition, Vector2I RealPosition) : IPillEvent;
+public record struct PillUpgradeEvent(Vector2I SpawnPosition, Pill Pill) : IPillEvent;
