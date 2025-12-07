@@ -68,7 +68,7 @@ public partial class BoardNode
     private async void OnCreateDeffered(DefferedEvent<PillCreateEvent> ev)
     {
         var pill = Board.pills[ev.Event.RealPosition];
-        var pillnode = GD.Load<PackedScene>("res://game/pill_node/PillNode.tscn").Instantiate<PillNode>();
+        var pillnode = GD.Load<PackedScene>("res://scenes/game/pill_node/PillNode.tscn").Instantiate<PillNode>();
         var sprite = pill.CreateNode();
         pillnode.AddChild(sprite);
         pillnode.Position = ev.Event.SpawnPosition * Constants.PillSize;
