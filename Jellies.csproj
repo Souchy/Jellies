@@ -6,6 +6,8 @@
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="src\cells\Cell.cs" />
+    <Compile Remove="src\cells\Conveyor.cs" />
     <Compile Remove="src\pills\PillEffect.cs" />
     <Compile Remove="src\pills\PillType.cs" />
     <Compile Remove="src\util\TaskDictionary.cs" />
