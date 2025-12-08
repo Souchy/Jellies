@@ -1,0 +1,89 @@
+@startuml
+
+package Souchy.Net.comm{
+    object AsyncRequestBus
+    object EventBus
+}
+package src{
+
+    class Board{
+        - OnInputClick
+        - OnInputSwap
+        - ProcessMatches
+        - ProcessEvents
+        - ChainDestroyPills
+        - ApplyAftermath
+        - ApplyGravity
+        - CheckMatchesOnSwap
+    }
+
+    class BoardGenerator{
+        + {static} Generate : Board
+        + {static} GenerateFillEmptyCells
+        - {static} CheckIsDeadlock : bool
+    }
+
+    class PatternChecker{
+        + {static} CheckMatchUpLeft : bool
+        + {static} CheckSquare : bool
+        + {static} CheckAllSquares : bool
+        + {static} CheckLine : bool
+        + {static} CheckRightLine : bool
+        + {static} CheckDownLine : bool
+        + {static} CheckAllLines : bool
+        + {static} CheckAllHorsesMoves : bool
+        + {static} CheckAllSnailMoves : bool
+    }
+
+    class Cell{
+
+    }
+
+    Interface Pill{
+        CanSwap: boolean
+        OnSwap
+        OnClick
+        OnDestroy
+        {abstract} CreateNode: Node2D
+    }
+
+    struct RegularPill{
+        GetRandomColor: RegularPillColor
+        
+    }
+
+    struct DynamitePill{
+
+    }
+
+
+    struct BombPill{
+
+    }
+
+    struct HorizontalPill{
+
+    }
+
+    struct VerticalPill{
+
+    }
+}
+
+package scenes{
+    class BoardNode{
+
+    }
+
+    class PillNode{
+        
+    }
+}
+Pill <|.. RegularPill
+Pill <|.. DynamitePill
+Pill <|.. BombPill
+Pill <|.. HorizontalPill
+Pill <|.. VerticalPill
+Board *-- Pill
+BoardGenerator ..> Board
+@enduml
